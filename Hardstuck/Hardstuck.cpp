@@ -13,6 +13,10 @@ std::shared_ptr<CVarManagerWrapper> _globalCvarManager;
 void Hardstuck::onLoad()
 {
 	_globalCvarManager = cvarManager;
+
+	// Ensure settings service and backend are initialized early so UI and backend operations work.
+	InitializeSettingsService();
+	InitializeBackend();
 	//LOG("Plugin loaded!");
 	// !! Enable debug logging by setting DEBUG_LOG = true in logging.h !!
 	//DEBUGLOG("Hardstuck debug mode enabled");
