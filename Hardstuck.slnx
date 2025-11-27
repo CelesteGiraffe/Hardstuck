@@ -3,5 +3,5 @@
     <BuildType Name="Release" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="Hardstuck/Hardstuck.vcxproj" />
+  <Project Path="Hardstuck/Hardstuck.vcxproj" Id="5c272e80-d10c-4311-8def-b80438ee096c" />
 </Solution>
