@@ -81,6 +81,39 @@
     <ClCompile Include="GuiBase.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
+    <ClCompile Include="src\backend\ApiClient.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\backend\HsBackend.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils\HsUtils.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\diagnostics\DiagnosticLogger.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\payload\HsPayloadBuilder.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\payload\PlaylistCatalog.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\history\HistoryJson.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\settings\SettingsService.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\HsOverlayUi.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\HsSettingsUi.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\HsHistoryWindowUi.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imgui_rangeslider.h">
@@ -138,6 +171,48 @@
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="GuiBase.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="backend\ApiClient.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="backend\HsBackend.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="payload\HsPayloadBuilder.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="payload\PlaylistCatalog.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="payload\playlist.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="diagnostics\DiagnosticLogger.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="settings\ISettingsService.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="settings\SettingsService.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="history\HistoryTypes.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="history\HistoryJson.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\HsOverlayUi.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\HsSettingsUi.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="ui\HsHistoryWindowUi.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\HsUtils.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>
   </ItemGroup>

@@ -9,9 +9,21 @@
 #include <functional>
 #include <memory>
 
-#include "IMGUI/imgui.h"
-#include "IMGUI/imgui_stdlib.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_stdlib.h"
 #include "IMGUI/imgui_searchablecombo.h"
 #include "IMGUI/imgui_rangeslider.h"
 
 #include "logging.h"
+
+// Common plugin headers used by migrated code
+#include "settings/ISettingsService.h"
+#include "diagnostics/DiagnosticLogger.h"
+#include "utils/HsUtils.h"
+#include "backend/ApiClient.h"
+#include "backend/HsBackend.h"
+#include "payload/HsPayloadBuilder.h"
+#include "history/HistoryTypes.h"
+#include "ui/HsOverlayUi.h"
+#include "ui/HsSettingsUi.h"
+#include "ui/HsHistoryWindowUi.h"

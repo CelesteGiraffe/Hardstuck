@@ -59,6 +59,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -78,13 +79,15 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(APPDATA)\bakkesmod\bakkesmod\bakkesmodsdk\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(APPDATA)\bakkesmod\bakkesmod\bakkesmodsdk\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File update_version.ps1 "./version.h"</Command>
@@ -100,7 +103,7 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui_rangeslider.cpp" />
     <ClCompile Include="imgui\imgui_searchablecombo.cpp" />
-    <ClCompile Include="IMGUI\imgui_stdlib.cpp" />
+    <ClCompile Include="imgui\imgui_stdlib.cpp" />
     <ClCompile Include="imgui\imgui_timeline.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="pch.cpp">
@@ -108,6 +111,17 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Hardstuck.cpp" />
+    <ClCompile Include="src\backend\ApiClient.cpp" />
+    <ClCompile Include="src\backend\HsBackend.cpp" />
+    <ClCompile Include="src\utils\HsUtils.cpp" />
+    <ClCompile Include="src\diagnostics\DiagnosticLogger.cpp" />
+    <ClCompile Include="src\payload\HsPayloadBuilder.cpp" />
+    <ClCompile Include="src\payload\PlaylistCatalog.cpp" />
+    <ClCompile Include="src\history\HistoryJson.cpp" />
+    <ClCompile Include="src\settings\SettingsService.cpp" />
+    <ClCompile Include="src\ui\HsOverlayUi.cpp" />
+    <ClCompile Include="src\ui\HsSettingsUi.cpp" />
+    <ClCompile Include="src\ui\HsHistoryWindowUi.cpp" />
     <ClCompile Include="GuiBase.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -129,6 +143,20 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="GuiBase.h" />
     <ClInclude Include="Hardstuck.h" />
+    <ClInclude Include="backend\ApiClient.h" />
+    <ClInclude Include="backend\HsBackend.h" />
+    <ClInclude Include="payload\HsPayloadBuilder.h" />
+    <ClInclude Include="payload\PlaylistCatalog.h" />
+    <ClInclude Include="payload\playlist.h" />
+    <ClInclude Include="diagnostics\DiagnosticLogger.h" />
+    <ClInclude Include="settings\ISettingsService.h" />
+    <ClInclude Include="settings\SettingsService.h" />
+    <ClInclude Include="history\HistoryTypes.h" />
+    <ClInclude Include="history\HistoryJson.h" />
+    <ClInclude Include="ui\HsOverlayUi.h" />
+    <ClInclude Include="ui\HsSettingsUi.h" />
+    <ClInclude Include="ui\HsHistoryWindowUi.h" />
+    <ClInclude Include="utils\HsUtils.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>

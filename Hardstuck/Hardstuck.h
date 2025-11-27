@@ -1,26 +1,100 @@
 #pragma once
 
-#include "GuiBase.h"
-#include "bakkesmod/plugin/bakkesmodplugin.h"
-#include "bakkesmod/plugin/pluginwindow.h"
-#include "bakkesmod/plugin/PluginSettingsWindow.h"
-
+// keep version and plugin version macro
 #include "version.h"
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
 
+#include "GuiBase.h"
+#include "bakkesmod/plugin/bakkesmodplugin.h"
+#include "bakkesmod/plugin/pluginwindow.h"
+#include "bakkesmod/plugin/pluginsettingswindow.h"
+#include "bakkesmod/wrappers/GameWrapper.h"
+#include "bakkesmod/wrappers/GameEvent/ServerWrapper.h"
+#include "pch.h"
 
-class Hardstuck: public BakkesMod::Plugin::BakkesModPlugin
-	//,public SettingsWindowBase // Uncomment if you wanna render your own tab in the settings menu
-	//,public PluginWindowBase // Uncomment if you want to render your own plugin window
+// Core includes used by migrated code
+#include "settings/ISettingsService.h"
+#include "diagnostics/DiagnosticLogger.h"
+#include "settings/SettingsService.h"
+#include "utils/HsUtils.h"
+#include "backend/ApiClient.h"
+#include "backend/HsBackend.h"
+#include "payload/HsPayloadBuilder.h"
+
+// ImGui includes are provided via pch.h
+
+// History types
+#include "history/HistoryTypes.h"
+
+// Replace the template skeleton with the migrated plugin surface area
+class Hardstuck : public BakkesMod::Plugin::BakkesModPlugin,
+				  public BakkesMod::Plugin::PluginSettingsWindow,
+				  public BakkesMod::Plugin::PluginWindow
 {
-
-	//std::shared_ptr<bool> enabled;
-
-	//Boilerplate
-	void onLoad() override;
-	//void onUnload() override; // Uncomment and implement if you need a unload method
-
 public:
-	//void RenderSettings() override; // Uncomment if you wanna render your own tab in the settings menu
-	//void RenderWindow() override; // Uncomment if you want to render your own plugin window
+	// Lifecycle
+	void onLoad() override;
+	void onUnload() override;
+
+	// UI hooks
+	void Render() override;
+	void RenderSettings() override;
+	void SetImGuiContext(uintptr_t ctx) override;
+	bool ShouldBlockInput() override;
+	bool IsActiveOverlay() override;
+	void OnOpen() override;
+	void OnClose() override;
+
+	// Menu metadata
+	std::string GetPluginName() override;
+	std::string GetMenuName() override;
+	std::string GetMenuTitle() override;
+
+private:
+	struct PendingMatchUpload {
+		HsMatchPayloadComponents components;
+		int playlistMmrId;
+		std::string contextTag;
+		bool finalized;
+		bool postDestroyScheduled;
+	};
+
+	// functionality and helpers are implemented in Hardstuck.cpp
+	void HookMatchEvents();
+	void HandleGameEnd(std::string eventName);
+	void HandleReplayRecorded(std::string eventName);
+	void HandleGameDestroyed(std::string eventName);
+	ServerWrapper ResolveActiveServer(GameWrapper* gw) const;
+	bool CaptureServerAndUpload(ServerWrapper server, const char* contextTag);
+	bool CaptureServerAndStageDelayedUpload(ServerWrapper server, const char* contextTag);
+	void CacheLastPayload(const std::string& payload, const char* contextTag);
+	bool DispatchCachedPayload(const char* reason);
+	bool UploadMmrSnapshot(const char* contextTag);
+	void DispatchPayloadAsync(const std::string& endpoint, const std::string& body);
+	void CleanupFinishedRequests();
+	void TriggerManualUpload();
+	void FetchHistory();
+	void OpenHistoryWindow();
+	void ExecuteHistoryWindowCommand();
+	void RenderHistoryWindow();
+	void InitializeSettingsService();
+	void InitializeBackend();
+	void PersistSettings() const;
+	void ShutdownBackend();
+	void UnregisterUi();
+	bool BindImGuiContext() const;
+	void RenderOverlay(const std::string& lastResponse, const std::string& lastError);
+	bool IsInFreeplay(GameWrapper* gw) const;
+	void SchedulePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending, float delaySeconds, const char* reason);
+	void FinalizePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending);
+	void RemovePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending);
+	int FetchLatestMmr(int playlistMmrId) const;
+	float GetPostMatchDelaySeconds() const;
+
+	std::unique_ptr<class HsBackend> backend_;
+	bool showHistoryWindow_ = false;
+	std::vector<std::shared_ptr<PendingMatchUpload>> pendingMatchUploads_;
+	ImGuiContext* imguiContext_ = nullptr;
+	bool menuOpen_ = false;
+	std::unique_ptr<ISettingsService> settingsService_;
 };
