@@ -73,3 +73,4 @@ Hardstuck/IMGUI/**/*.pdb
 # --- Explicit local and user project files (should be ignored) ---
 *.vcxproj.user
 *.suo
+Hardstuck_source.zip

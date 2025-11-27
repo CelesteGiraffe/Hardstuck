@@ -17,6 +17,14 @@ This plugin is intended to run in Rocket League and act as a local bridge for an
 
 ---
 
+## Companion app
+
+This plugin is designed to be used alongside a front-end companion app. The recommended companion app is RL-Trainer-2 — it communicates with this plugin's local API and provides a user-facing interface for training and MMR tracking.
+
+Link: https://github.com/CelesteGiraffe/RL-Trainer-2
+
+
+
 ## For contributors / maintainers
 
 This repo focuses on API/communication parts right now. If you're contributing, prefer testing the backend APIs and payload code over UI changes.
