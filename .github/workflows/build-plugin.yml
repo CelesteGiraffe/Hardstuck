@@ -1,0 +1,36 @@
+name: Build BakkesMod Plugin
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build BakkesMod Plugin
+        id: build-plugin
+        uses: Bakkesplugins/bakkesmod-plugin-build@v1.0.0
+        with:
+          # Build configuration: 'Debug' or 'Release'
+          build-config: 'Release'
+          # You can leave these as 'master' unless you need specific commits
+          bakkesmod-sdk-ref: 'master'
+          vcpkg-ref: 'master'
+          # How long to keep artefacts
+          retention-days: '14'
+
+      - name: Print build summary
+        if: always()
+        run: |
+          echo "Build status: ${{ steps.build-plugin.outputs.build-status }}"
+          echo "Build exit code: ${{ steps.build-plugin.outputs.build-exit-code }}"
+          echo "Debug artifact: ${{ steps.build-plugin.outputs.artifact-name }}"
+          echo "Public artifact: ${{ steps.build-plugin.outputs.public-artifact-name }}"
+          echo "Debug ZIP path: ${{ steps.build-plugin.outputs.zip-path }}"
+          echo "Public ZIP path: ${{ steps.build-plugin.outputs.public-zip-path }}"
