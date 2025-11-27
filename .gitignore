@@ -1,0 +1,75 @@
+## Visual Studio / Windows / C++ - tailored .gitignore for this repo
+
+# --- Keep legacy snapshot folder ignored ---
+/Hardstuck/Old Version/
+
+# --- Visual Studio / IDE ---
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.sdf
+*.opendb
+*.VC.opendb
+.vscode/
+
+# --- Build / binary output ---
+# General build folders
+[Bb]in/
+[Oo]bj/
+build/
+CMakeFiles/
+cmake-build-*/
+
+# Common Visual Studio output configurations
+Debug*/
+Release*/
+x64/Debug*/
+x64/Release*/
+
+# Files from building/running
+*.exe
+*.dll
+*.lib
+*.pdb
+*.obj
+*.o
+*.ilk
+*.map
+*.exp
+*.idb
+
+# --- Compiler / generated sources ---
+*_i.c
+*_pdb.*
+*.tlb
+*.tli
+*.tlh
+
+# --- Package manager artifacts ---
+packages/
+vcpkg_installed/
+installed/
+
+# --- OS / Editor noise ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs / temporary / misc ---
+*.log
+tmp/
+temp/
+
+# --- Vendorized third-party source (track source, ignore build output) ---
+# IMGUI is vendorized in Hardstuck/IMGUI; keep its source tracked but ignore generated artifacts inside it
+Hardstuck/IMGUI/**/bin/
+Hardstuck/IMGUI/**/obj/
+Hardstuck/IMGUI/**/*.dll
+Hardstuck/IMGUI/**/*.pdb
+
+# --- Explicit local and user project files (should be ignored) ---
+*.vcxproj.user
+*.suo
