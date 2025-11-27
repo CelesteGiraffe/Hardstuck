@@ -28,8 +28,8 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 
 // Replace the template skeleton with the migrated plugin surface area
 class Hardstuck : public BakkesMod::Plugin::BakkesModPlugin,
-				  public BakkesMod::Plugin::PluginSettingsWindow,
-				  public BakkesMod::Plugin::PluginWindow
+			  public BakkesMod::Plugin::PluginSettingsWindow,
+			  public BakkesMod::Plugin::PluginWindow
 {
 public:
 	// Lifecycle
@@ -97,4 +97,7 @@ private:
 	ImGuiContext* imguiContext_ = nullptr;
 	bool menuOpen_ = false;
 	std::unique_ptr<ISettingsService> settingsService_;
+
+	// Cached base URL so we can update backend when settings change at runtime
+	std::string cachedBaseUrl_;
 };
