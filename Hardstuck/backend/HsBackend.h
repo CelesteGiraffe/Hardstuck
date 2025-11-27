@@ -52,6 +52,9 @@ public:
     // Should be called when shutting down to clean up ready futures.
     void CleanupFinishedRequests();
 
+    // Update the API client's base URL at runtime.
+    void SetApiBaseUrl(const std::string& baseUrl);
+
 private:
     // Non-owning pointers to plugin services
     CVarManagerWrapper* cvarManager_;

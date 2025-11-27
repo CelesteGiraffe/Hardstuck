@@ -222,3 +222,11 @@ void HsBackend::CleanupFinishedRequests()
             }),
         pendingRequests_.end());
 }
+
+void HsBackend::SetApiBaseUrl(const std::string& baseUrl)
+{
+    if (apiClient_)
+    {
+        apiClient_->SetBaseUrl(baseUrl);
+    }
+}
