@@ -17,9 +17,20 @@ void Hardstuck::onLoad()
 	// Ensure settings service and backend are initialized early so UI and backend operations work.
 	InitializeSettingsService();
 	InitializeBackend();
-	//LOG("Plugin loaded!");
-	// !! Enable debug logging by setting DEBUG_LOG = true in logging.h !!
-	//DEBUGLOG("Hardstuck debug mode enabled");
+
+	// Hook match events so post-match staged capture and uploads run automatically.
+	try
+	{
+		HookMatchEvents();
+		if (cvarManager)
+		{
+			cvarManager->log("HS: hooked match events on load");
+		}
+	}
+	catch (...)
+	{
+		DiagnosticLogger::Log("onLoad: failed to hook match events");
+	}
 }
 
 void Hardstuck::onUnload()
