@@ -1,19 +1,19 @@
 # Hardstuck — BakkesMod plugin
 
-One-line: Hardstuck is a BakkesMod plugin for basic backend communication and telemetry, it currently exposes an API client and payload builder used by an external front-end to track training and MMR progress.
+One-line: Hardstuck is a BakkesMod plugin for basic backend communication and telemetry, it currently exposes an API client and payload builder used by an external front-end to track training and MMR progress (see https://github.com/CelesteGiraffe/Hardstuck-frontend).
 
-Note: The GUI overlay is not functional yet. This submission focuses on the backend/API pieces that the external front-end app uses for training and MMR tracking.
+Note: The GUI overlay is not functional yet. This submission focuses on the backend/API pieces that the external front-end app uses for training and MMR tracking (see https://github.com/CelesteGiraffe/Hardstuck-frontend).
 
 ---
 
 ## Quick start (for integrating apps)
 
-This plugin is intended to run in Rocket League and act as a local bridge for an external front-end that tracks training and MMR progress. It currently does not provide an in-game GUI.
+This plugin is intended to run in Rocket League and act as a local bridge for an external front-end that tracks training and MMR progress (for the official frontend see https://github.com/CelesteGiraffe/Hardstuck-frontend). It currently does not provide an in-game GUI.
 
 1. Build or download a release zip and extract the plugin folder into your BakkesMod `bakkesmod/plugins` folder. The release must include at minimum:
    - `Hardstuck.dll` (Release build, x64)
    - `Hardstuck.json` (plugin manifest)
-2. Launch Rocket League and verify the plugin loads (check BakkesMod logs). The front-end app should communicate with the plugin's API hooks to receive telemetry and progress data.
+2. Launch Rocket League and verify the plugin loads (check BakkesMod logs). The front-end app should communicate with the plugin's API hooks to receive telemetry and progress data — see https://github.com/CelesteGiraffe/Hardstuck-frontend for the companion frontend that works with this uploader.
 
 ---
 
@@ -21,7 +21,9 @@ This plugin is intended to run in Rocket League and act as a local bridge for an
 
 This plugin is designed to be used alongside a front-end companion app. The recommended companion app is RL-Trainer-2 — it communicates with this plugin's local API and provides a user-facing interface for training and MMR tracking.
 
-Link: https://github.com/CelesteGiraffe/RL-Trainer-2
+This plugin also serves as the uploader that works with the official companion frontend: https://github.com/CelesteGiraffe/Hardstuck-frontend
+
+Reference (RL-Trainer-2): https://github.com/CelesteGiraffe/RL-Trainer-2
 
 
 

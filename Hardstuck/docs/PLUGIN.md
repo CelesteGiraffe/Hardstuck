@@ -1,6 +1,6 @@
 # Hardstuck — Contributor Guide (short)
 
-One-liner: Hardstuck is a BakkesMod plugin that provides backend/API hooks and payload builders used by an external front-end to track training and MMR progress.
+One-liner: Hardstuck is a BakkesMod plugin that provides backend/API hooks and payload builders used by an external front-end to track training and MMR progress (see https://github.com/CelesteGiraffe/Hardstuck-frontend).
 
 This doc is short, exact, and aimed at maintainers who want to build, package, and review contributions quickly.
 
@@ -10,7 +10,7 @@ This doc is short, exact, and aimed at maintainers who want to build, package, a
 
 The plugin hooks into BakkesMod's plugin lifecycle and Rocket League game events. Right now the important parts are the backend, API client, and payload builders.The in-game GUI overlay is NOT implemented yet and should be considered TODO.
 
-Primary runtime flow (current submission): game events & input → backend/payload builder → API client → external front-end app for telemetry/tracking.
+Primary runtime flow (current submission): game events & input → backend/payload builder → API client → external front-end app for telemetry/tracking (see https://github.com/CelesteGiraffe/Hardstuck-frontend).
 
 ---
 
@@ -24,13 +24,13 @@ Top-level plugin files (root of `Hardstuck/`):
 
 Primary implementation under `Hardstuck/src/` (API-focused):
 
-- `src/backend/ApiClient.cpp` — HTTP client wrapper and API integration (important for front-end)
+- `src/backend/ApiClient.cpp` — HTTP client wrapper and API integration (important for front-end; see https://github.com/CelesteGiraffe/Hardstuck-frontend)
 - `src/backend/HsBackend.cpp` — backend logic and game-event handlers (where telemetry is collected)
 - `src/payload/HsPayloadBuilder.cpp` — constructs payloads sent to external services
 - `src/history/HistoryJson.cpp` — local history persistence (matches/training data)
 - `src/settings/SettingsService.cpp` — settings and configuration used by backend pieces
 
-UI files exist (`src/ui/*`, `IMGUI/`) but the overlay/front-end UI is not functional in this submission.
+UI files exist (`src/ui/*`, `IMGUI/`) but the overlay/front-end UI is not functional in this submission (the official companion frontend that pairs with this uploader is available at https://github.com/CelesteGiraffe/Hardstuck-frontend).
 
 Support libraries and UI code are in `IMGUI/` (lots of ImGui helpers and controls).
 
