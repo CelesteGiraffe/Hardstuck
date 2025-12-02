@@ -17,7 +17,6 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 #include "diagnostics/DiagnosticLogger.h"
 #include "settings/SettingsService.h"
 #include "utils/HsUtils.h"
-#include "backend/ApiClient.h"
 #include "backend/HsBackend.h"
 #include "payload/HsPayloadBuilder.h"
 
@@ -97,7 +96,4 @@ private:
 	ImGuiContext* imguiContext_ = nullptr;
 	bool menuOpen_ = false;
 	std::unique_ptr<ISettingsService> settingsService_;
-
-	// Cached base URL so we can update backend when settings change at runtime
-	std::string cachedBaseUrl_;
 };

@@ -113,6 +113,7 @@
     <ClCompile Include="Hardstuck.cpp" />
     <ClCompile Include="src\backend\ApiClient.cpp" />
     <ClCompile Include="src\backend\HsBackend.cpp" />
+    <ClCompile Include="src\storage\LocalDataStore.cpp" />
     <ClCompile Include="src\utils\HsUtils.cpp" />
     <ClCompile Include="src\diagnostics\DiagnosticLogger.cpp" />
     <ClCompile Include="src\payload\HsPayloadBuilder.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="Hardstuck.h" />
     <ClInclude Include="backend\ApiClient.h" />
     <ClInclude Include="backend\HsBackend.h" />
+    <ClInclude Include="storage\LocalDataStore.h" />
     <ClInclude Include="payload\HsPayloadBuilder.h" />
     <ClInclude Include="payload\PlaylistCatalog.h" />
     <ClInclude Include="payload\playlist.h" />

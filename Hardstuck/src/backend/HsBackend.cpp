@@ -3,11 +3,8 @@
 #include "backend/HsBackend.h"
 
 #include <algorithm>
-#include <sstream>
 
 #include "diagnostics/DiagnosticLogger.h"
-#include "history/HistoryJson.h"
-#include "utils/HsUtils.h"
 #include "settings/SettingsService.h"
 
 #include "bakkesmod/wrappers/GameWrapper.h"
@@ -15,24 +12,24 @@
 #include "bakkesmod/wrappers/UniqueIDWrapper.h"
 #include "bakkesmod/wrappers/cvarmanagerwrapper.h"
 
-HsBackend::HsBackend(std::unique_ptr<ApiClient> apiClient,
+HsBackend::HsBackend(std::unique_ptr<LocalDataStore> dataStore,
                      CVarManagerWrapper* cvarManager,
                      GameWrapper* gameWrapper,
                      SettingsService* settingsService)
     : cvarManager_(cvarManager)
     , gameWrapper_(gameWrapper)
     , settingsService_(settingsService)
-    , apiClient_(std::move(apiClient))
+    , dataStore_(std::move(dataStore))
 {
 }
 
 void HsBackend::DispatchPayloadAsync(const std::string& endpoint, const std::string& body)
 {
-    if (!apiClient_)
+    if (!dataStore_)
     {
         if (cvarManager_)
         {
-            cvarManager_->log("HS: API client is not configured");
+            cvarManager_->log("HS: local data store is not configured");
         }
         return;
     }
@@ -42,25 +39,20 @@ void HsBackend::DispatchPayloadAsync(const std::string& endpoint, const std::str
 
     CleanupFinishedRequests();
 
-    const std::string userId = settingsService_ ? settingsService_->GetUserId() : std::string();
-    std::vector<HttpHeader> headers;
-    headers.emplace_back("X-User-Id", userId);
-    headers.emplace_back("User-Agent", "HardstuckPlugin/1.0");
-
-    auto future = std::async(std::launch::async, [this, endpoint, body, headers]() {
-        std::string response;
+    auto future = std::async(std::launch::async, [this, body]() {
         std::string error;
-        bool success = apiClient_->PostJson(endpoint, body, headers, response, error);
+        bool success = dataStore_->AppendPayload(body, error);
 
         std::lock_guard<std::mutex> lock(requestMutex_);
+        lastResponseMessage_.clear();
         if (success)
         {
-            lastResponseMessage_ = response.empty() ? "HTTP 2xx" : response;
+            lastResponseMessage_ = "Stored payload locally";
             lastErrorMessage_.clear();
         }
         else
         {
-            lastErrorMessage_ = error.empty() ? (response.empty() ? "Unknown error" : response) : error;
+            lastErrorMessage_ = error.empty() ? std::string("Failed to persist payload") : error;
         }
     });
 
@@ -99,21 +91,16 @@ bool HsBackend::UploadMmrSnapshot(const char* contextTag)
 
 void HsBackend::FetchHistory()
 {
-    if (!apiClient_)
+    if (!dataStore_)
     {
         if (cvarManager_)
         {
-            cvarManager_->log("HS: API client is not configured for history fetch");
+            cvarManager_->log("HS: local data store is not configured for history fetch");
         }
         return;
     }
 
     CleanupFinishedRequests();
-
-    const std::string userId = settingsService_ ? settingsService_->GetUserId() : std::string();
-    std::vector<HttpHeader> headers;
-    headers.emplace_back("X-User-Id", userId);
-    headers.emplace_back("User-Agent", "HardstuckPlugin/1.0");
 
     {
         std::lock_guard<std::mutex> lock(historyMutex_);
@@ -121,24 +108,12 @@ void HsBackend::FetchHistory()
         historyErrorMessage_.clear();
     }
 
-    const std::string endpoint = "/api/bakkesmod/history";
-    DiagnosticLogger::Log(std::string("FetchHistory: requesting ") + endpoint);
+    DiagnosticLogger::Log("FetchHistory: reading local store");
 
-    auto future = std::async(std::launch::async, [this, endpoint, headers]() {
-        std::string response;
-        std::string error;
-        bool success = apiClient_->GetJson(endpoint, headers, response, error);
-
+    auto future = std::async(std::launch::async, [this]() {
         HistorySnapshot parsed;
-        std::string parseError;
-        if (success)
-        {
-            if (!::HistoryJson::ParseHistoryResponse(response, parsed, parseError))
-            {
-                success = false;
-                error = parseError.empty() ? std::string("Failed to parse history response") : parseError;
-            }
-        }
+        std::string error;
+        bool success = dataStore_->LoadHistory(parsed, error);
 
         std::lock_guard<std::mutex> lock(historyMutex_);
         historyLoading_ = false;
@@ -146,11 +121,19 @@ void HsBackend::FetchHistory()
         {
             historySnapshot_ = std::move(parsed);
             historyLastFetched_ = std::chrono::system_clock::now();
-            historyErrorMessage_.clear();
+        }
+
+        if (!error.empty())
+        {
+            historyErrorMessage_ = error;
+        }
+        else if (!success)
+        {
+            historyErrorMessage_ = "History load failed";
         }
         else
         {
-            historyErrorMessage_ = error.empty() ? std::string("History request failed") : error;
+            historyErrorMessage_.clear();
         }
     });
 
@@ -221,12 +204,4 @@ void HsBackend::CleanupFinishedRequests()
                        f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
             }),
         pendingRequests_.end());
-}
-
-void HsBackend::SetApiBaseUrl(const std::string& baseUrl)
-{
-    if (apiClient_)
-    {
-        apiClient_->SetBaseUrl(baseUrl);
-    }
 }

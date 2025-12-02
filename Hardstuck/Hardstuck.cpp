@@ -4,6 +4,8 @@
 #include "diagnostics/DiagnosticLogger.h"
 #include "payload/HsPayloadBuilder.h"
 #include "settings/SettingsService.h"
+#include "storage/LocalDataStore.h"
+#include <filesystem>
 
 // Using the plugin_version symbol from Hardstuck.h's include of version.h
 BAKKESMOD_PLUGIN(Hardstuck, "Hardstuck : Rocket League Training Journal", plugin_version, PERMISSION_ALL)
@@ -55,11 +57,26 @@ void Hardstuck::InitializeSettingsService()
 
 void Hardstuck::InitializeBackend()
 {
-	std::string baseUrl = settingsService_ ? settingsService_->GetBaseUrl() : std::string();
-	DiagnosticLogger::Log(std::string("onLoad: creating ApiClient with baseUrl=") + baseUrl);
-	auto client = std::make_unique<ApiClient>(baseUrl);
+	std::filesystem::path dataDir;
+	if (settingsService_)
+	{
+		dataDir = settingsService_->GetSettingsPath().parent_path();
+	}
+	DiagnosticLogger::Log(std::string("onLoad: creating LocalDataStore at ") + dataDir.string());
+	auto dataStore = std::make_unique<LocalDataStore>(dataDir);
+
+	std::string migrationNote;
+	if (!dataStore->ReplayLegacyCache(migrationNote))
+	{
+		DiagnosticLogger::Log(std::string("onLoad: failed to migrate cached payloads: ") + migrationNote);
+	}
+	else if (!migrationNote.empty())
+	{
+		DiagnosticLogger::Log(std::string("onLoad: migration note: ") + migrationNote);
+	}
+
 	backend_ = std::make_unique<HsBackend>(
-		std::move(client),
+		std::move(dataStore),
 		cvarManager.get(),
 		gameWrapper.get(),
 		static_cast<SettingsService*>(settingsService_.get())
@@ -68,9 +85,6 @@ void Hardstuck::InitializeBackend()
 	{
 		cvarManager->log("HS: backend created");
 	}
-
-	// cache base URL so changes to settings propagate to backend
-	cachedBaseUrl_ = baseUrl;
 }
 
 void Hardstuck::PersistSettings() const
@@ -157,18 +171,6 @@ void Hardstuck::RenderSettings()
 	if (!BindImGuiContext())
 	{
 		return;
-	}
-
-	// detect base URL changes and apply to backend
-	if (settingsService_ && backend_)
-	{
-		std::string currentBase = settingsService_->GetBaseUrl();
-		if (currentBase != cachedBaseUrl_)
-		{
-			DiagnosticLogger::Log(std::string("Base URL changed from ") + cachedBaseUrl_ + " to " + currentBase);
-			cachedBaseUrl_ = currentBase;
-			backend_->SetApiBaseUrl(currentBase);
-		}
 	}
 
 	HsRenderSettingsUi(

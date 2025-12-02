@@ -8,18 +8,18 @@
 #include <chrono>
 
 #include "history/HistoryTypes.h"
-#include "backend/ApiClient.h"
+#include "storage/LocalDataStore.h"
 #include "payload/HsPayloadBuilder.h"
 
 class CVarManagerWrapper;
 class GameWrapper;
 class SettingsService;
 
-// Thin backend that owns API client, async request state, history cache, and payload cache.
+// Thin backend that owns local storage, async request state, history cache, and payload cache.
 class HsBackend
 {
 public:
-    HsBackend(std::unique_ptr<ApiClient> apiClient,
+    HsBackend(std::unique_ptr<LocalDataStore> dataStore,
                CVarManagerWrapper* cvarManager,
                GameWrapper* gameWrapper,
                SettingsService* settingsService);
@@ -52,17 +52,14 @@ public:
     // Should be called when shutting down to clean up ready futures.
     void CleanupFinishedRequests();
 
-    // Update the API client's base URL at runtime.
-    void SetApiBaseUrl(const std::string& baseUrl);
-
 private:
     // Non-owning pointers to plugin services
     CVarManagerWrapper* cvarManager_;
     GameWrapper*        gameWrapper_;
     SettingsService*    settingsService_;
 
-    // API client owned by backend
-    std::unique_ptr<ApiClient> apiClient_;
+    // Local data store owned by backend
+    std::unique_ptr<LocalDataStore> dataStore_;
 
     // Request / response state
     mutable std::mutex requestMutex_;

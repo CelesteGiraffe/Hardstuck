@@ -87,6 +87,9 @@
     <ClCompile Include="src\backend\HsBackend.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
+    <ClCompile Include="src\storage\LocalDataStore.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
     <ClCompile Include="src\utils\HsUtils.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
@@ -177,6 +180,9 @@
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="backend\HsBackend.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="storage\LocalDataStore.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="payload\HsPayloadBuilder.h">
