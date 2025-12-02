@@ -63,6 +63,10 @@ desktop.ini
 tmp/
 temp/
 
+# --- Always keep contributor guidance visible ---
+!AGENTS.md
+!**/AGENTS.md
+
 # --- Vendorized third-party source (track source, ignore build output) ---
 # IMGUI is vendorized in Hardstuck/IMGUI; keep its source tracked but ignore generated artifacts inside it
 Hardstuck/IMGUI/**/bin/
