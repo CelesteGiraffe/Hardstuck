@@ -372,6 +372,11 @@ void Hardstuck::TriggerManualUpload()
 		return;
 	}
 
+	if (backend_)
+	{
+		backend_->FlushBufferedWrites();
+	}
+
 	gameWrapper->Execute([this](GameWrapper* gw) {
 		const bool inFreeplay = IsInFreeplay(gw);
 		const char* manualContext = inFreeplay ? "manual_sync_freeplay" : "manual_sync";
@@ -707,6 +712,16 @@ void Hardstuck::Render()
 	if (backend_)
 	{
 		backend_->SnapshotRequestState(lastResponse, lastError);
+	}
+	std::string storageStatus;
+	size_t buffered = 0;
+	if (backend_)
+	{
+		backend_->SnapshotStorageDiagnostics(storageStatus, buffered);
+		if (!storageStatus.empty())
+		{
+			lastResponse = storageStatus + " | buffered=" + std::to_string(buffered);
+		}
 	}
 
 	if (!BindImGuiContext())

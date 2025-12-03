@@ -63,6 +63,10 @@ void HsRenderOverlayUi(
     {
         ImGui::TextWrapped("Last response: %s", lastResponse.c_str());
     }
+    if (manualSessionActive)
+    {
+        ImGui::TextWrapped("Manual session active");
+    }
     if (!lastError.empty())
     {
         ImGui::TextWrapped("Last error: %s", lastError.c_str());

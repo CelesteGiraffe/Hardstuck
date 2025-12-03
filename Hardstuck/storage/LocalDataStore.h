@@ -21,6 +21,9 @@ public:
     // Build a HistorySnapshot from persisted payloads.
     bool LoadHistory(HistorySnapshot& snapshot, std::string& error) const;
 
+    // Append and verify last line persisted.
+    bool AppendPayloadsWithVerification(const std::vector<std::string>& payloads, std::string& error);
+
     // Import cached payloads from older queue files, if any.
     bool ReplayLegacyCache(std::string& error);
 

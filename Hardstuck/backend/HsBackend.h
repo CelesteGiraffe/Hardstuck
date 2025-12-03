@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 #include <future>
 #include <mutex>
 #include <chrono>
@@ -42,6 +43,8 @@ public:
 
     // Snapshot request state for UI (thread-safe copy).
     void SnapshotRequestState(std::string& lastResponse, std::string& lastError) const;
+    void SnapshotStorageDiagnostics(std::string& status, size_t& bufferedCount) const;
+    void FlushBufferedWrites();
 
     // Snapshot history state for UI (thread-safe copy).
     void SnapshotHistory(HistorySnapshot& snapshot,
@@ -66,6 +69,9 @@ private:
     std::vector<std::future<void>> pendingRequests_;
     std::string lastResponseMessage_;
     std::string lastErrorMessage_;
+    std::deque<std::string> bufferedPayloads_;
+    std::string lastWriteStatus_;
+    static constexpr size_t kMaxBufferedPayloads = 8;
 
     // History state
     mutable std::mutex historyMutex_;

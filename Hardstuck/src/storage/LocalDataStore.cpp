@@ -69,6 +69,40 @@ bool LocalDataStore::AppendPayloads(const std::vector<std::string>& payloads, st
     return AppendLines(payloads, error);
 }
 
+bool LocalDataStore::AppendPayloadsWithVerification(const std::vector<std::string>& payloads, std::string& error)
+{
+    if (!AppendPayloads(payloads, error))
+    {
+        return false;
+    }
+
+    // Verify last line matches last payload
+    std::ifstream input(storePath_);
+    if (!input.is_open())
+    {
+        error = std::string("Verification failed: could not reopen ") + storePath_.string();
+        return false;
+    }
+
+    std::string lastLine;
+    std::string line;
+    while (std::getline(input, line))
+    {
+        if (!IsJsonLineEmpty(line))
+        {
+            lastLine = line;
+        }
+    }
+
+    if (lastLine != payloads.back())
+    {
+        error = "Verification failed: payload mismatch";
+        return false;
+    }
+
+    return true;
+}
+
 bool LocalDataStore::ReadPayloadLines(std::vector<std::string>& lines, std::string& error) const
 {
     std::lock_guard<std::mutex> lock(fileMutex_);
