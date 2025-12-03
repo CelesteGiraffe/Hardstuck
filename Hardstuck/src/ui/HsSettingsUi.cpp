@@ -145,7 +145,7 @@ namespace
         }
     }
 
-    void RenderActions(HsToggleMenuFn toggleMenu, CVarManagerWrapper& cvarManager)
+    void RenderActions(HsToggleMenuFn toggleMenu, HsToggleOverlayFn toggleOverlay, CVarManagerWrapper& cvarManager)
     {
         ImGui::Spacing();
         if (ImGui::Button("Open Hardstuck Menu", hs::ui::PrimaryButtonSize()))
@@ -159,6 +159,18 @@ namespace
                 cvarManager.log("HS: menu toggle callback unavailable");
             }
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Open Overlay", hs::ui::PrimaryButtonSize()))
+        {
+            if (toggleOverlay)
+            {
+                toggleOverlay();
+            }
+            else
+            {
+                cvarManager.log("HS: overlay toggle callback unavailable");
+            }
+        }
     }
 }
 
@@ -166,6 +178,7 @@ void HsRenderSettingsUi(
     ISettingsService* settingsService,
     CVarManagerWrapper* cvarManager,
     HsToggleMenuFn toggleMenu,
+    HsToggleOverlayFn toggleOverlay,
     const std::filesystem::path& storePath
 )
 {
@@ -184,12 +197,10 @@ void HsRenderSettingsUi(
     auto& uiState = GetUiState();
     SyncBuffers(uiState, *settingsService, storePath);
 
-    ImGui::TextUnformatted("Local storage configuration and training focuses.");
-
     RenderStorageSection(uiState, *settingsService, *cvarManager);
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
     RenderFocusSection(uiState, *settingsService, *cvarManager);
 
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
-    RenderActions(std::move(toggleMenu), *cvarManager);
+    RenderActions(std::move(toggleMenu), std::move(toggleOverlay), *cvarManager);
 }

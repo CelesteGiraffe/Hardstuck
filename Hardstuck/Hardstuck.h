@@ -103,6 +103,7 @@ private:
 	void StartFocusTimer();
 	void StopFocusTimer();
 	void ToggleFocusTimer();
+	void ToggleOverlayOnly();
 	void WriteFocusedSessionRecord(const std::string& focusLabel, std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end);
 	std::string CurrentSessionTypeString(bool inFreeplay, int playlistMmrId) const;
 	void EnsureActiveFocus();
@@ -118,5 +119,7 @@ private:
 	bool focusedSessionActive_{false};
 	std::chrono::system_clock::time_point focusedSessionStart_{};
 	std::string activeFocus_;
+	bool showOverlayStandalone_{false};
+	bool overlayOnlyLaunch_{false};
 	std::string resolvedUserId_;
 };

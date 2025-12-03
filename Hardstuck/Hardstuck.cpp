@@ -213,6 +213,7 @@ void Hardstuck::RenderSettings()
 		settingsService_.get(),
 		cvarManager.get(),
 		[this]() { ToggleMenu(); },
+		[this]() { ToggleOverlayOnly(); },
 		backend_ ? backend_->GetStorePath() : std::filesystem::path()
 	);
 }
@@ -739,6 +740,44 @@ void Hardstuck::ToggleFocusTimer()
 	}
 }
 
+void Hardstuck::ToggleOverlayOnly()
+{
+	showOverlayStandalone_ = true;
+	overlayOnlyLaunch_ = true;
+	showHistoryWindow_ = false;
+	if (!cvarManager)
+	{
+		return;
+	}
+
+	auto toggle = [this]()
+	{
+		try
+		{
+			cvarManager->executeCommand(std::string("togglemenu ") + GetMenuName());
+		}
+		catch (...)
+		{
+			cvarManager->log("HS: failed to toggle overlay");
+		}
+	};
+
+	if (gameWrapper)
+	{
+		try
+		{
+			gameWrapper->Execute([toggle](GameWrapper* /*gw*/) { toggle(); });
+			return;
+		}
+		catch (...)
+		{
+			cvarManager->log("HS: overlay toggle dispatch threw; retrying inline");
+		}
+	}
+
+	toggle();
+}
+
 void Hardstuck::RegisterUiCommands()
 {
 	if (!cvarManager)
@@ -756,17 +795,20 @@ void Hardstuck::RegisterUiCommands()
 void Hardstuck::OnOpen()
 {
 	menuOpen_ = true;
-	if (!showHistoryWindow_)
+	if (!overlayOnlyLaunch_ && !showHistoryWindow_)
 	{
 		showHistoryWindow_ = true;
 		FetchHistory();
 	}
+	overlayOnlyLaunch_ = false;
 }
 
 void Hardstuck::OnClose()
 {
 	menuOpen_ = false;
 	showHistoryWindow_ = false;
+	showOverlayStandalone_ = false;
+	overlayOnlyLaunch_ = false;
 }
 
 void Hardstuck::Render()
@@ -797,7 +839,7 @@ void Hardstuck::Render()
 	std::string historyError;
 	bool historyLoading = false;
 	std::chrono::system_clock::time_point historyLastFetched;
-	if (backend_ && (showHistoryWindow_ || menuOpen_))
+	if (backend_ && (showHistoryWindow_ || menuOpen_ || showOverlayStandalone_))
 	{
 		backend_->SnapshotHistory(historySnapshot, historyError, historyLoading, historyLastFetched);
 	}
@@ -806,7 +848,7 @@ void Hardstuck::Render()
 	{
 		RenderHistoryWindow(historySnapshot, historyError, historyLoading, historyLastFetched);
 	}
-	if (!menuOpen_)
+	if (!menuOpen_ && !showOverlayStandalone_)
 	{
 		return;
 	}
