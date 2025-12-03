@@ -797,10 +797,6 @@ void Hardstuck::Render()
 	}
 
 	RenderOverlay(lastResponse, lastError, historySnapshot, historyError, historyLoading, historyLastFetched);
-	if (showHistoryWindow_)
-	{
-		RenderHistoryWindow(historySnapshot, historyError, historyLoading, historyLastFetched);
-	}
 }
 
 // Stub implementations for match event hooks

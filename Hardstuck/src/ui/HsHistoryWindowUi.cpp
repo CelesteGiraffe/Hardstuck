@@ -512,16 +512,17 @@ namespace
 
         ImGui::BeginChild("mmr_entries_child", ImVec2(0.0f, 200.0f), true);
         ImGui::Columns(5, "mmr_columns");
+        ImGui::TextUnformatted("Source"); ImGui::NextColumn();
         ImGui::TextUnformatted("Time"); ImGui::NextColumn();
         ImGui::TextUnformatted("Playlist"); ImGui::NextColumn();
         ImGui::TextUnformatted("MMR"); ImGui::NextColumn();
-        ImGui::TextUnformatted("GamesΔ"); ImGui::NextColumn();
-        ImGui::TextUnformatted("Source"); ImGui::NextColumn();
-        ImGui::NextColumn();
+        ImGui::TextUnformatted("Game #"); ImGui::NextColumn();
         ImGui::Separator();
 
         for (const auto& entry : entries)
         {
+            ImGui::TextUnformatted(entry.source.c_str());
+            ImGui::NextColumn();
             ImGui::TextUnformatted(entry.timestamp.c_str());
             ImGui::NextColumn();
             ImGui::TextUnformatted(entry.playlist.c_str());
@@ -529,8 +530,6 @@ namespace
             ImGui::Text("%d", entry.mmr);
             ImGui::NextColumn();
             ImGui::Text("%+d", entry.gamesPlayedDiff);
-            ImGui::NextColumn();
-            ImGui::TextUnformatted(entry.source.c_str());
             ImGui::NextColumn();
         }
         ImGui::Columns(1);
