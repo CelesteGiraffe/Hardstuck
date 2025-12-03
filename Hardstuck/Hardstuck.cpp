@@ -5,6 +5,7 @@
 #include "payload/HsPayloadBuilder.h"
 #include "settings/SettingsService.h"
 #include "storage/LocalDataStore.h"
+#include "src/user/UserIdResolver.h"
 #include <sstream>
 #include <filesystem>
 
@@ -68,8 +69,9 @@ void Hardstuck::InitializeBackend()
 	{
 		dataDir = std::filesystem::temp_directory_path() / "hardstuck";
 	}
-	DiagnosticLogger::Log(std::string("onLoad: creating LocalDataStore at ") + dataDir.string());
-	auto dataStore = std::make_unique<LocalDataStore>(dataDir);
+	resolvedUserId_ = UserIdResolver::ResolveUserId(gameWrapper.get(), static_cast<SettingsService*>(settingsService_.get()));
+	DiagnosticLogger::Log(std::string("onLoad: creating LocalDataStore at ") + dataDir.string() + " for user " + resolvedUserId_);
+	auto dataStore = std::make_unique<LocalDataStore>(dataDir, resolvedUserId_);
 	if (settingsService_)
 	{
 		dataStore->SetLimits(
@@ -77,19 +79,9 @@ void Hardstuck::InitializeBackend()
 			static_cast<SettingsService*>(settingsService_.get())->GetMaxStoreFiles()
 		);
 	}
-
-	std::string migrationNote;
-	if (!dataStore->ReplayLegacyCache(migrationNote))
-	{
-		DiagnosticLogger::Log(std::string("onLoad: failed to migrate cached payloads: ") + migrationNote);
-	}
-	else if (!migrationNote.empty())
-	{
-		DiagnosticLogger::Log(std::string("onLoad: migration note: ") + migrationNote);
-	}
-
 	backend_ = std::make_unique<HsBackend>(
 		std::move(dataStore),
+		resolvedUserId_,
 		cvarManager.get(),
 		gameWrapper.get(),
 		static_cast<SettingsService*>(settingsService_.get())
@@ -253,7 +245,7 @@ bool Hardstuck::CaptureServerAndStageDelayedUpload(ServerWrapper server, const c
 
 	HsMatchPayloadComponents components;
 	int playlistMmrId = 0;
-	if (!HsCollectMatchPayloadComponents(server, settingsService_.get(), components, playlistMmrId))
+	if (!HsCollectMatchPayloadComponents(server, settingsService_.get(), resolvedUserId_, components, playlistMmrId))
 	{
 		DiagnosticLogger::Log("CaptureServerAndStageDelayedUpload: failed to collect match components");
 		return false;
@@ -296,7 +288,7 @@ void Hardstuck::SchedulePendingMatchUpload(
 		std::string("SchedulePendingMatchUpload: context=") + context
 		+ ", delay=" + std::to_string(delay)
 		+ ", reason=" + reasonLabel
-	);
+		);
 
 	gameWrapper->SetTimeout([this, pending](GameWrapper* /*gw*/)
 	{
@@ -318,7 +310,7 @@ void Hardstuck::FinalizePendingMatchUpload(const std::shared_ptr<Hardstuck::Pend
 	DiagnosticLogger::Log(
 		std::string("FinalizePendingMatchUpload: context=") + pending->contextTag
 		+ ", mmr=" + std::to_string(latestMmr)
-	);
+		);
 
 	this->CacheLastPayload(payload, pending->contextTag.c_str());
 	this->DispatchPayloadAsync("/api/mmr-log", payload);
@@ -462,7 +454,7 @@ bool Hardstuck::CaptureServerAndUpload(ServerWrapper server, const char* context
 	}
 	HsMatchPayloadComponents components;
 	int playlistMmrId = 0;
-	if (!HsCollectMatchPayloadComponents(server, settingsService_.get(), components, playlistMmrId))
+	if (!HsCollectMatchPayloadComponents(server, settingsService_.get(), resolvedUserId_, components, playlistMmrId))
 	{
 		DiagnosticLogger::Log(std::string("CaptureServerAndUpload: failed to collect components for context ") + tag);
 		return false;
@@ -610,12 +602,12 @@ void Hardstuck::WriteFocusedSessionRecord(std::chrono::system_clock::time_point 
 	std::ostringstream oss;
 	oss << '{'
 		<< "\"timestamp\":" << JsonEscape(FormatTimestamp(start)) << ','
-		<< "\"playlist\":\"Freeplay\","
-		<< "\"mmr\":0,"
-		<< "\"gamesPlayedDiff\":0,"
-		<< "\"source\":\"manual_session\","
-		<< "\"sessionType\":\"focused_freeplay\","
-		<< "\"userId\":\"local\","
+		<< "\"playlist\":\"Freeplay\"," 
+		<< "\"mmr\":0," 
+		<< "\"gamesPlayedDiff\":0," 
+		<< "\"source\":\"manual_session\"," 
+		<< "\"sessionType\":\"focused_freeplay\"," 
+		<< "\"userId\":" << JsonEscape(resolvedUserId_) << ','
 		<< "\"durationSeconds\":" << duration << ','
 		<< "\"teams\":[],"
 		<< "\"scoreboard\":[]"

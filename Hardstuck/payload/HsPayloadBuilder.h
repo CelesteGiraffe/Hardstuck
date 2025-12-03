@@ -26,6 +26,7 @@ std::string HsSerializeScoreboard(ServerWrapper server);
 bool HsCollectMatchPayloadComponents(
     ServerWrapper server,
     ISettingsService* settingsService,
+    const std::string& userId,
     HsMatchPayloadComponents& outComponents,
     int& outPlaylistMmrId
 );
@@ -37,7 +38,7 @@ bool HsTryFetchPlaylistRating(GameWrapper* gameWrapper, int playlistMmrId, float
 bool HsTryFetchPlaylistRating(GameWrapper* gameWrapper, UniqueIDWrapper& uniqueId, int playlistMmrId, float& outRating);
 
 // Full match payload (for a finished match / replay)
-std::string HsBuildMatchPayload(ServerWrapper server, GameWrapper* gameWrapper, ISettingsService* settingsService, const std::string& sessionType);
+std::string HsBuildMatchPayload(ServerWrapper server, GameWrapper* gameWrapper, ISettingsService* settingsService, const std::string& sessionType, const std::string& userId);
 
 // Snapshot payloads (for "current MMR for all queues")
-std::vector<std::string> HsBuildMmrSnapshotPayloads(GameWrapper* gameWrapper, ISettingsService* settingsService, const std::string& sessionType);
+std::vector<std::string> HsBuildMmrSnapshotPayloads(GameWrapper* gameWrapper, ISettingsService* settingsService, const std::string& sessionType, const std::string& userId);

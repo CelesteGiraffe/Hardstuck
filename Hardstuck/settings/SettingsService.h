@@ -17,6 +17,7 @@ public:
     std::filesystem::path GetSettingsPath() const override;
     std::filesystem::path GetDataDirectory() const override;
     void SetDataDirectory(const std::filesystem::path& dir) override;
+    std::string GetInstallId() override;
     uint64_t GetMaxStoreBytes() const override;
     void SetMaxStoreBytes(uint64_t bytes) override;
     int GetMaxStoreFiles() const override;
@@ -34,6 +35,7 @@ private:
     uint64_t ParseUint64Cvar(const char* name, uint64_t defaultValue) const;
     int ParseIntCvar(const char* name, int defaultValue) const;
     std::string ReadStringCvar(const char* name, const char* fallback) const;
+    std::string GenerateInstallId() const;
 
     std::shared_ptr<CVarManagerWrapper> cvarManager_;
     std::filesystem::path dataDirectory_;
@@ -42,4 +44,5 @@ private:
     std::string focusFreeplayKey_ = "F7";
     std::string trainingPackKey_ = "F8";
     std::string manualSessionKey_ = "F9";
+    mutable std::string installId_;
 };

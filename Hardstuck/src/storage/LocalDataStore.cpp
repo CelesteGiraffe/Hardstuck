@@ -38,14 +38,41 @@ namespace
         }
         return true;
     }
+
+    std::string SanitizeUserId(const std::string& userId)
+    {
+        std::string safe;
+        safe.reserve(userId.size());
+        for (char c : userId)
+        {
+            if ((c >= 'a' && c <= 'z') ||
+                (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-')
+            {
+                safe.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+            }
+        }
+        if (safe.empty())
+        {
+            safe = "anon";
+        }
+        if (safe.size() > 64)
+        {
+            safe.resize(64);
+        }
+        return safe;
+    }
 }
 
-LocalDataStore::LocalDataStore(std::filesystem::path baseDirectory)
+LocalDataStore::LocalDataStore(std::filesystem::path baseDirectory, std::string userId)
     : baseDirectory_(ResolveBaseDirectory(baseDirectory))
 {
-    storePath_ = baseDirectory_ / "local_history.jsonl";
-    legacyCachePath_ = baseDirectory_ / "payload_cache.jsonl";
-    legacyBackupPath_ = baseDirectory_ / "cached_payloads.jsonl";
+    const std::string sanitizedUser = SanitizeUserId(userId);
+    userDirectory_ = baseDirectory_ / sanitizedUser;
+    storePath_ = userDirectory_ / "local_history.jsonl";
+    legacyCachePath_ = userDirectory_ / "payload_cache.jsonl";
+    legacyBackupPath_ = userDirectory_ / "cached_payloads.jsonl";
 }
 
 bool LocalDataStore::AppendPayload(const std::string& payload, std::string& error)

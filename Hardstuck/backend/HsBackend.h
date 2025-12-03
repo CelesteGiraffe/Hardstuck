@@ -21,6 +21,7 @@ class HsBackend
 {
 public:
     HsBackend(std::unique_ptr<LocalDataStore> dataStore,
+              std::string userId,
                CVarManagerWrapper* cvarManager,
                GameWrapper* gameWrapper,
                SettingsService* settingsService);
@@ -63,6 +64,7 @@ private:
 
     // Local data store owned by backend
     std::unique_ptr<LocalDataStore> dataStore_;
+    std::string userId_;
 
     // Request / response state
     mutable std::mutex requestMutex_;

@@ -28,6 +28,7 @@ public:
     virtual std::filesystem::path GetSettingsPath() const = 0;
     virtual std::filesystem::path GetDataDirectory() const = 0;
     virtual void SetDataDirectory(const std::filesystem::path& dir) = 0;
+    virtual std::string GetInstallId() = 0;
     virtual uint64_t GetMaxStoreBytes() const = 0;
     virtual void SetMaxStoreBytes(uint64_t bytes) = 0;
     virtual int GetMaxStoreFiles() const = 0;

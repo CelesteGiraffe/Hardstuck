@@ -110,4 +110,5 @@ private:
 	SessionLabel currentSessionLabel_{SessionLabel::Unknown};
 	bool focusedSessionActive_{false};
 	std::chrono::system_clock::time_point focusedSessionStart_{};
+	std::string resolvedUserId_;
 };

@@ -13,6 +13,7 @@
 #include "bakkesmod/wrappers/cvarmanagerwrapper.h"
 
 HsBackend::HsBackend(std::unique_ptr<LocalDataStore> dataStore,
+                     std::string userId,
                      CVarManagerWrapper* cvarManager,
                      GameWrapper* gameWrapper,
                      SettingsService* settingsService)
@@ -20,6 +21,7 @@ HsBackend::HsBackend(std::unique_ptr<LocalDataStore> dataStore,
     , gameWrapper_(gameWrapper)
     , settingsService_(settingsService)
     , dataStore_(std::move(dataStore))
+    , userId_(std::move(userId))
 {
 }
 
@@ -91,7 +93,7 @@ bool HsBackend::UploadMmrSnapshot(const char* contextTag, const std::string& ses
         return false;
     }
 
-    auto payloads = HsBuildMmrSnapshotPayloads(gameWrapper_, settingsService_, sessionType);
+    auto payloads = HsBuildMmrSnapshotPayloads(gameWrapper_, settingsService_, sessionType, userId_);
     if (payloads.empty())
     {
         DiagnosticLogger::Log(std::string("UploadMmrSnapshot: no snapshot payloads produced for context ") + tag);

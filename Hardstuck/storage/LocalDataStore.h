@@ -12,7 +12,7 @@
 class LocalDataStore
 {
 public:
-    explicit LocalDataStore(std::filesystem::path baseDirectory);
+    explicit LocalDataStore(std::filesystem::path baseDirectory, std::string userId);
 
     // Append one or more payloads to disk (JSONL).
     bool AppendPayload(const std::string& payload, std::string& error);
@@ -50,6 +50,7 @@ private:
     bool RotateIfNeeded(std::string& error);
 
     std::filesystem::path baseDirectory_;
+    std::filesystem::path userDirectory_;
     std::filesystem::path storePath_;
     std::filesystem::path legacyCachePath_;
     std::filesystem::path legacyBackupPath_;

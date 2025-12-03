@@ -11,6 +11,8 @@
 #include <cctype>
 #include <fstream>
 #include <system_error>
+#include <random>
+#include <sstream>
 
 namespace
 {
@@ -51,6 +53,7 @@ void SettingsService::RegisterCVars()
     cvarManager_->registerCvar(settings::kKeyFocusFreeplayCvarName, focusFreeplayKey_, "Keybind: mark focused freeplay session");
     cvarManager_->registerCvar(settings::kKeyTrainingPackCvarName, trainingPackKey_, "Keybind: mark training pack session");
     cvarManager_->registerCvar(settings::kKeyManualSessionCvarName, manualSessionKey_, "Keybind: toggle manual session tracking");
+    cvarManager_->registerCvar("hs_install_id", GenerateInstallId(), "Generated install identifier (do not edit)");
 
     cvarManager_->registerCvar(settings::kUiEnabledCvarName, "1", "Legacy UI toggle (window now follows togglemenu)");
     cvarManager_->registerCvar("hs_ui_debug_show_demo", "0", "Show ImGui demo window for debugging (1 = show)");
@@ -76,6 +79,7 @@ void SettingsService::LoadPersistedSettings()
     std::string fileKeyFocus;
     std::string fileKeyTraining;
     std::string fileKeyManual;
+    std::string fileInstallId;
 
     while (std::getline(input, line))
     {
@@ -118,6 +122,10 @@ void SettingsService::LoadPersistedSettings()
         {
             fileKeyManual = value;
         }
+        else if (key == "install_id")
+        {
+            fileInstallId = value;
+        }
     }
 
     if (!fileDataDir.empty())
@@ -144,6 +152,10 @@ void SettingsService::LoadPersistedSettings()
     {
         SetManualSessionKey(fileKeyManual);
     }
+    if (!fileInstallId.empty())
+    {
+        installId_ = fileInstallId;
+    }
 }
 
 void SettingsService::SavePersistedSettings()
@@ -165,6 +177,7 @@ void SettingsService::SavePersistedSettings()
     output << "key_focus_freeplay=" << GetFocusFreeplayKey() << "\n";
     output << "key_training_pack=" << GetTrainingPackKey() << "\n";
     output << "key_manual_session=" << GetManualSessionKey() << "\n";
+    output << "install_id=" << GetInstallId() << "\n";
 }
 
 std::filesystem::path SettingsService::GetSettingsPath() const
@@ -236,6 +249,54 @@ void SettingsService::SetDataDirectory(const std::filesystem::path& dir)
     {
         DiagnosticLogger::Log("SettingsService::SetDataDirectory: failed to set hs_data_dir");
     }
+}
+
+std::string SettingsService::GenerateInstallId() const
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 15);
+    std::ostringstream oss;
+    for (int i = 0; i < 16; ++i)
+    {
+        oss << std::hex << dist(gen);
+    }
+    return oss.str();
+}
+
+std::string SettingsService::GetInstallId()
+{
+    if (!installId_.empty())
+    {
+        return installId_;
+    }
+
+    if (cvarManager_)
+    {
+        try
+        {
+            installId_ = cvarManager_->getCvar("hs_install_id").getStringValue();
+        }
+        catch (...)
+        {
+            installId_.clear();
+        }
+    }
+
+    if (installId_.empty())
+    {
+        installId_ = GenerateInstallId();
+        if (cvarManager_)
+        {
+            try
+            {
+                cvarManager_->getCvar("hs_install_id").setValue(installId_);
+            }
+            catch (...) {}
+        }
+    }
+
+    return installId_;
 }
 
 uint64_t SettingsService::GetMaxStoreBytes() const

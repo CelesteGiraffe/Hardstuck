@@ -87,6 +87,9 @@
     <ClCompile Include="src\backend\HsBackend.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
+    <ClCompile Include="src\user\UserIdResolver.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
     <ClCompile Include="src\storage\LocalDataStore.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
@@ -180,6 +183,9 @@
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="backend\HsBackend.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="user\UserIdResolver.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="storage\LocalDataStore.h">
