@@ -195,6 +195,7 @@ void Hardstuck::RenderSettings()
 		settingsService_.get(),
 		cvarManager.get(),
 		[this]() { TriggerManualUpload(); },
+		[this]() { ToggleMenu(); },
 		backend_ ? backend_->GetStorePath() : std::filesystem::path()
 	);
 }
@@ -433,6 +434,41 @@ void Hardstuck::TriggerManualUpload()
 			cvarManager->log("HS: manual sync failed; no payloads available");
 		}
 	});
+}
+
+void Hardstuck::ToggleMenu()
+{
+	if (!cvarManager)
+	{
+		return;
+	}
+
+	auto toggle = [this]()
+	{
+		try
+		{
+			cvarManager->executeCommand(std::string("togglemenu ") + GetMenuName());
+		}
+		catch (...)
+		{
+			cvarManager->log("HS: failed to toggle Hardstuck menu from settings UI");
+		}
+	};
+
+	if (gameWrapper)
+	{
+		try
+		{
+			gameWrapper->Execute([toggle](GameWrapper* /*gw*/) { toggle(); });
+			return;
+		}
+		catch (...)
+		{
+			cvarManager->log("HS: toggle menu dispatch threw; retrying inline");
+		}
+	}
+
+	toggle();
 }
 
 ServerWrapper Hardstuck::ResolveActiveServer(GameWrapper* gw) const

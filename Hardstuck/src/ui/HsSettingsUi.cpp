@@ -110,7 +110,7 @@ namespace
         }
     }
 
-    void RenderActions(HsTriggerManualUploadFn triggerManualUpload)
+    void RenderActions(HsTriggerManualUploadFn triggerManualUpload, HsToggleMenuFn toggleMenu, CVarManagerWrapper& cvarManager)
     {
         ImGui::Spacing();
         if (ImGui::Button("Gather && Upload Now", hs::ui::PrimaryButtonSize()))
@@ -122,6 +122,19 @@ namespace
         }
         ImGui::SameLine();
         ImGui::TextWrapped("Captures the active match/replay and immediately syncs it.");
+
+        ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing() * 0.5f));
+        if (ImGui::Button("Open Hardstuck Menu", hs::ui::PrimaryButtonSize()))
+        {
+            if (toggleMenu)
+            {
+                toggleMenu();
+            }
+            else
+            {
+                cvarManager.log("HS: menu toggle callback unavailable");
+            }
+        }
     }
 }
 
@@ -129,6 +142,7 @@ void HsRenderSettingsUi(
     ISettingsService* settingsService,
     CVarManagerWrapper* cvarManager,
     HsTriggerManualUploadFn triggerManualUpload,
+    HsToggleMenuFn toggleMenu,
     const std::filesystem::path& storePath
 )
 {
@@ -154,5 +168,5 @@ void HsRenderSettingsUi(
     RenderKeybindSection(uiState, *settingsService);
 
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
-    RenderActions(triggerManualUpload);
+    RenderActions(triggerManualUpload, std::move(toggleMenu), *cvarManager);
 }

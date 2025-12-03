@@ -73,6 +73,7 @@ private:
 	void DispatchPayloadAsync(const std::string& endpoint, const std::string& body);
 	void CleanupFinishedRequests();
 	void TriggerManualUpload();
+	void ToggleMenu();
 	void FetchHistory();
 	void OpenHistoryWindow();
 	void ExecuteHistoryWindowCommand();
