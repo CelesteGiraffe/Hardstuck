@@ -133,7 +133,12 @@ bool Hardstuck::BindImGuiContext() const
 	return ImGui::GetCurrentContext() != nullptr;
 }
 
-void Hardstuck::RenderOverlay(const std::string& lastResponse, const std::string& lastError)
+void Hardstuck::RenderOverlay(const std::string& lastResponse,
+	const std::string& lastError,
+	const HistorySnapshot& historySnapshot,
+	const std::string& historyError,
+	bool historyLoading,
+	std::chrono::system_clock::time_point historyLastFetched)
 {
 	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
 	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
@@ -142,10 +147,15 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse, const std::string
 		cvarManager.get(),
 		lastResponse,
 		lastError,
+		historySnapshot,
+		historyError,
+		historyLoading,
+		historyLastFetched,
 		sessionLabel,
 		manualActive,
 		[this]() { TriggerManualUpload(); },
-		[this]() { ExecuteHistoryWindowCommand(); }
+		[this]() { ExecuteHistoryWindowCommand(); },
+		[this]() { FetchHistory(); }
 	);
 }
 
@@ -162,17 +172,11 @@ void Hardstuck::DispatchPayloadAsync(const std::string& endpoint, const std::str
 	backend_->DispatchPayloadAsync(endpoint, body);
 }
 
-void Hardstuck::RenderHistoryWindow()
+void Hardstuck::RenderHistoryWindow(const HistorySnapshot& snapshot,
+	const std::string& errorMessage,
+	bool loading,
+	std::chrono::system_clock::time_point lastFetched)
 {
-	if (!backend_)
-	{
-		return;
-	}
-	HistorySnapshot snapshot;
-	std::string errorMessage;
-	bool loading = false;
-	std::chrono::system_clock::time_point lastFetched;
-	backend_->SnapshotHistory(snapshot, errorMessage, loading, lastFetched);
 	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
 	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
 	const bool manualActive = focusedSessionActive_ || currentSessionLabel_ != SessionLabel::Unknown;
@@ -722,19 +726,28 @@ void Hardstuck::Render()
 		return;
 	}
 
+	HistorySnapshot historySnapshot;
+	std::string historyError;
+	bool historyLoading = false;
+	std::chrono::system_clock::time_point historyLastFetched;
+	if (backend_ && (showHistoryWindow_ || menuOpen_))
+	{
+		backend_->SnapshotHistory(historySnapshot, historyError, historyLoading, historyLastFetched);
+	}
+
 	if (showHistoryWindow_)
 	{
-		RenderHistoryWindow();
+		RenderHistoryWindow(historySnapshot, historyError, historyLoading, historyLastFetched);
 	}
 	if (!menuOpen_)
 	{
 		return;
 	}
 
-	RenderOverlay(lastResponse, lastError);
+	RenderOverlay(lastResponse, lastError, historySnapshot, historyError, historyLoading, historyLastFetched);
 	if (showHistoryWindow_)
 	{
-		RenderHistoryWindow();
+		RenderHistoryWindow(historySnapshot, historyError, historyLoading, historyLastFetched);
 	}
 }
 

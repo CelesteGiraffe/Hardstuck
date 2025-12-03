@@ -76,14 +76,22 @@ private:
 	void FetchHistory();
 	void OpenHistoryWindow();
 	void ExecuteHistoryWindowCommand();
-	void RenderHistoryWindow();
+	void RenderHistoryWindow(const HistorySnapshot& snapshot,
+	                         const std::string& errorMessage,
+	                         bool loading,
+	                         std::chrono::system_clock::time_point lastFetched);
 	void InitializeSettingsService();
 	void InitializeBackend();
 	void PersistSettings() const;
 	void ShutdownBackend();
 	void UnregisterUi();
 	bool BindImGuiContext() const;
-	void RenderOverlay(const std::string& lastResponse, const std::string& lastError);
+	void RenderOverlay(const std::string& lastResponse,
+	                   const std::string& lastError,
+	                   const HistorySnapshot& historySnapshot,
+	                   const std::string& historyError,
+	                   bool historyLoading,
+	                   std::chrono::system_clock::time_point historyLastFetched);
 	bool IsInFreeplay(GameWrapper* gw) const;
 	void SchedulePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending, float delaySeconds, const char* reason);
 	void FinalizePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending);
