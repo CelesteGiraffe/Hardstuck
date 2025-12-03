@@ -776,11 +776,15 @@ void HsRenderHistoryWindowUi(
     RenderComparisonTable(comparisons, uiState.showDailyComparison);
 
     ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
-    RenderMmrEntries(filteredMmr);
-    ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
-    RenderTrainingEntries(snapshot.trainingHistory);
-    ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
-    RenderAggregates(filteredAggregates);
+    if (ImGui::CollapsingHeader("Detailed logs (advanced)##hs_details", 0))
+    {
+        ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing() * 0.5f));
+        RenderMmrEntries(filteredMmr);
+        ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing() * 0.5f));
+        RenderTrainingEntries(snapshot.trainingHistory);
+        ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing() * 0.5f));
+        RenderAggregates(filteredAggregates);
+    }
 
     ImGui::End();
 }
