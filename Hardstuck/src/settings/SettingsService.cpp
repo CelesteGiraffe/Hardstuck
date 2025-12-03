@@ -27,35 +27,6 @@ namespace
         return trimmed;
     }
 
-    std::string NormalizeBaseUrl(const std::string& candidate)
-    {
-        std::string trimmed = Trimmed(candidate);
-        if (trimmed.empty())
-        {
-            return trimmed;
-        }
-
-        std::string lowered = trimmed;
-        std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char ch) {
-            return static_cast<char>(std::tolower(ch));
-        });
-
-        if (lowered.rfind("http://", 0) == 0 || lowered.rfind("https://", 0) == 0)
-        {
-            return trimmed;
-        }
-
-        return std::string("http://") + trimmed;
-    }
-
-    bool ParseBoolValue(const std::string& value)
-    {
-        std::string lowered = value;
-        std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char ch) {
-            return static_cast<char>(std::tolower(ch));
-        });
-        return (lowered == "1" || lowered == "true" || lowered == "yes");
-    }
 }
 
 SettingsService::SettingsService(std::shared_ptr<CVarManagerWrapper> cvarManager)
@@ -71,27 +42,20 @@ void SettingsService::RegisterCVars()
         return;
     }
 
-    auto baseCvar = cvarManager_->registerCvar(settings::kBaseUrlCvarName, settings::kDefaultBaseUrl, "Base URL for the Hardstuck : Rocket League Training Journal API");
-    auto forceCvar = cvarManager_->registerCvar(settings::kForceLocalhostCvarName, "1", "Force uploads to http://localhost:4000");
-    try
-    {
-        forceLocalhost_ = forceCvar.getBoolValue();
-    }
-    catch (...)
-    {
-        forceLocalhost_ = true;
-    }
+    const std::filesystem::path defaultDir = GetSettingsPath().parent_path() / "data";
+    dataDirectory_ = defaultDir;
+
+    cvarManager_->registerCvar(settings::kDataDirCvarName, defaultDir.string(), "Directory for Hardstuck local data");
+    cvarManager_->registerCvar(settings::kStoreMaxBytesCvarName, std::to_string(maxStoreBytes_), "Max size per data file in bytes before rotation");
+    cvarManager_->registerCvar(settings::kStoreMaxFilesCvarName, std::to_string(maxStoreFiles_), "Max number of rotated data files to keep");
+    cvarManager_->registerCvar(settings::kKeyFocusFreeplayCvarName, focusFreeplayKey_, "Keybind: mark focused freeplay session");
+    cvarManager_->registerCvar(settings::kKeyTrainingPackCvarName, trainingPackKey_, "Keybind: mark training pack session");
+    cvarManager_->registerCvar(settings::kKeyManualSessionCvarName, manualSessionKey_, "Keybind: toggle manual session tracking");
 
     cvarManager_->registerCvar(settings::kUiEnabledCvarName, "1", "Legacy UI toggle (window now follows togglemenu)");
     cvarManager_->registerCvar("hs_ui_debug_show_demo", "0", "Show ImGui demo window for debugging (1 = show)");
-    cvarManager_->registerCvar(settings::kUserIdCvarName, "test-player", "User identifier sent as X-User-Id when uploading matches");
     cvarManager_->registerCvar(settings::kGamesPlayedCvarName, "1", "Increment for gamesPlayedDiff payload field");
     cvarManager_->registerCvar(settings::kPostMatchDelayCvarName, "4.0", "Seconds to wait after a match before refreshing MMR");
-
-    const std::string explicitBase = NormalizeBaseUrl(baseCvar.getStringValue());
-    manualBaseUrl_ = explicitBase;
-    const std::string target = forceLocalhost_ ? settings::kLocalhostBaseUrl : explicitBase;
-    ApplyBaseUrl(target);
 }
 
 void SettingsService::LoadPersistedSettings()
@@ -106,10 +70,12 @@ void SettingsService::LoadPersistedSettings()
     }
 
     std::string line;
-    std::string fileBaseUrl;
-    std::string fileUserId;
-    bool hasForce = false;
-    bool forcedValue = forceLocalhost_;
+    std::string fileDataDir;
+    std::string fileMaxBytes;
+    std::string fileMaxFiles;
+    std::string fileKeyFocus;
+    std::string fileKeyTraining;
+    std::string fileKeyManual;
 
     while (std::getline(input, line))
     {
@@ -128,37 +94,55 @@ void SettingsService::LoadPersistedSettings()
         const std::string key = Trimmed(trimmedLine.substr(0, eqPos));
         const std::string value = Trimmed(trimmedLine.substr(eqPos + 1));
 
-        if (key == "base_url")
+        if (key == "data_dir")
         {
-            fileBaseUrl = value;
+            fileDataDir = value;
         }
-        else if (key == "user_id")
+        else if (key == "store_max_bytes")
         {
-            fileUserId = value;
+            fileMaxBytes = value;
         }
-        else if (key == "force_localhost")
+        else if (key == "store_max_files")
         {
-            hasForce = true;
-            forcedValue = ParseBoolValue(value);
+            fileMaxFiles = value;
+        }
+        else if (key == "key_focus_freeplay")
+        {
+            fileKeyFocus = value;
+        }
+        else if (key == "key_training_pack")
+        {
+            fileKeyTraining = value;
+        }
+        else if (key == "key_manual_session")
+        {
+            fileKeyManual = value;
         }
     }
 
-    if (hasForce)
+    if (!fileDataDir.empty())
     {
-        forceLocalhost_ = forcedValue;
-        UpdateForceCvar();
+        SetDataDirectory(fileDataDir);
     }
-
-    if (!fileBaseUrl.empty())
+    if (!fileMaxBytes.empty())
     {
-        const std::string sanitized = NormalizeBaseUrl(fileBaseUrl);
-        manualBaseUrl_ = sanitized;
-        ApplyBaseUrl(sanitized);
+        try { SetMaxStoreBytes(static_cast<uint64_t>(std::stoull(fileMaxBytes))); } catch (...) {}
     }
-
-    if (!fileUserId.empty())
+    if (!fileMaxFiles.empty())
     {
-        SetUserId(fileUserId);
+        try { SetMaxStoreFiles(std::stoi(fileMaxFiles)); } catch (...) {}
+    }
+    if (!fileKeyFocus.empty())
+    {
+        SetFocusFreeplayKey(fileKeyFocus);
+    }
+    if (!fileKeyTraining.empty())
+    {
+        SetTrainingPackKey(fileKeyTraining);
+    }
+    if (!fileKeyManual.empty())
+    {
+        SetManualSessionKey(fileKeyManual);
     }
 }
 
@@ -175,9 +159,12 @@ void SettingsService::SavePersistedSettings()
         return;
     }
 
-    output << "base_url=" << GetBaseUrl() << "\n";
-    output << "force_localhost=" << (forceLocalhost_ ? "1" : "0") << "\n";
-    output << "user_id=" << GetUserId() << "\n";
+    output << "data_dir=" << GetDataDirectory().string() << "\n";
+    output << "store_max_bytes=" << GetMaxStoreBytes() << "\n";
+    output << "store_max_files=" << GetMaxStoreFiles() << "\n";
+    output << "key_focus_freeplay=" << GetFocusFreeplayKey() << "\n";
+    output << "key_training_pack=" << GetTrainingPackKey() << "\n";
+    output << "key_manual_session=" << GetManualSessionKey() << "\n";
 }
 
 std::filesystem::path SettingsService::GetSettingsPath() const
@@ -209,83 +196,33 @@ std::filesystem::path SettingsService::GetSettingsPath() const
     return base / "bakkesmod" / "hardstuck" / "settings.cfg";
 }
 
-std::string SettingsService::ApplyBaseUrl(const std::string& newUrl)
+std::filesystem::path SettingsService::GetDataDirectory() const
 {
-    const std::string sanitized = NormalizeBaseUrl(newUrl);
-    baseUrlCache_ = sanitized;
-    if (!forceLocalhost_)
+    if (!dataDirectory_.empty())
     {
-        manualBaseUrl_ = sanitized;
-    }
-
-    if (cvarManager_)
-    {
-        try
-        {
-            cvarManager_->getCvar(settings::kBaseUrlCvarName).setValue(sanitized);
-        }
-        catch (...)
-        {
-            DiagnosticLogger::Log("SettingsService::ApplyBaseUrl: failed to set hs_api_base_url");
-        }
-    }
-
-    return sanitized;
-}
-
-std::string SettingsService::GetBaseUrl() const
-{
-    if (!baseUrlCache_.empty())
-    {
-        return baseUrlCache_;
+        return dataDirectory_;
     }
 
     if (!cvarManager_)
     {
-        return std::string();
+        return GetSettingsPath().parent_path() / "data";
     }
 
     try
     {
-        return NormalizeBaseUrl(cvarManager_->getCvar(settings::kBaseUrlCvarName).getStringValue());
+        const std::string value = cvarManager_->getCvar(settings::kDataDirCvarName).getStringValue();
+        return std::filesystem::path(value);
     }
     catch (...)
     {
-        DiagnosticLogger::Log("SettingsService::GetBaseUrl: failed to read hs_api_base_url, returning empty string");
-        return std::string();
+        DiagnosticLogger::Log("SettingsService::GetDataDirectory: failed to read hs_data_dir, using default");
+        return GetSettingsPath().parent_path() / "data";
     }
 }
 
-void SettingsService::SetBaseUrl(const std::string& newUrl)
+void SettingsService::SetDataDirectory(const std::filesystem::path& dir)
 {
-    const std::string sanitized = NormalizeBaseUrl(newUrl);
-    manualBaseUrl_ = sanitized;
-    if (!forceLocalhost_)
-    {
-        ApplyBaseUrl(sanitized);
-    }
-}
-
-std::string SettingsService::GetUserId() const
-{
-    if (!cvarManager_)
-    {
-        return std::string("unknown");
-    }
-
-    try
-    {
-        return cvarManager_->getCvar(settings::kUserIdCvarName).getStringValue();
-    }
-    catch (...)
-    {
-        DiagnosticLogger::Log("SettingsService::GetUserId: failed to read hs_user_id, returning \"unknown\"");
-        return std::string("unknown");
-    }
-}
-
-void SettingsService::SetUserId(const std::string& userId)
-{
+    dataDirectory_ = dir;
     if (!cvarManager_)
     {
         return;
@@ -293,12 +230,129 @@ void SettingsService::SetUserId(const std::string& userId)
 
     try
     {
-        cvarManager_->getCvar(settings::kUserIdCvarName).setValue(userId);
+        cvarManager_->getCvar(settings::kDataDirCvarName).setValue(dir.string());
     }
     catch (...)
     {
-        DiagnosticLogger::Log("SettingsService::SetUserId: failed to set hs_user_id");
+        DiagnosticLogger::Log("SettingsService::SetDataDirectory: failed to set hs_data_dir");
     }
+}
+
+uint64_t SettingsService::GetMaxStoreBytes() const
+{
+    if (!cvarManager_)
+    {
+        return maxStoreBytes_;
+    }
+    return ParseUint64Cvar(settings::kStoreMaxBytesCvarName, maxStoreBytes_);
+}
+
+void SettingsService::SetMaxStoreBytes(uint64_t bytes)
+{
+    maxStoreBytes_ = bytes;
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try
+    {
+        cvarManager_->getCvar(settings::kStoreMaxBytesCvarName).setValue(std::to_string(bytes));
+    }
+    catch (...)
+    {
+        DiagnosticLogger::Log("SettingsService::SetMaxStoreBytes: failed to set hs_store_max_bytes");
+    }
+}
+
+int SettingsService::GetMaxStoreFiles() const
+{
+    if (!cvarManager_)
+    {
+        return maxStoreFiles_;
+    }
+    return ParseIntCvar(settings::kStoreMaxFilesCvarName, maxStoreFiles_);
+}
+
+void SettingsService::SetMaxStoreFiles(int files)
+{
+    maxStoreFiles_ = std::max(1, files);
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try
+    {
+        cvarManager_->getCvar(settings::kStoreMaxFilesCvarName).setValue(std::to_string(maxStoreFiles_));
+    }
+    catch (...)
+    {
+        DiagnosticLogger::Log("SettingsService::SetMaxStoreFiles: failed to set hs_store_max_files");
+    }
+}
+
+std::string SettingsService::GetFocusFreeplayKey() const
+{
+    if (!cvarManager_)
+    {
+        return focusFreeplayKey_;
+    }
+    return ReadStringCvar(settings::kKeyFocusFreeplayCvarName, focusFreeplayKey_.c_str());
+}
+
+void SettingsService::SetFocusFreeplayKey(const std::string& key)
+{
+    focusFreeplayKey_ = key;
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try { cvarManager_->getCvar(settings::kKeyFocusFreeplayCvarName).setValue(key); }
+    catch (...) { DiagnosticLogger::Log("SettingsService::SetFocusFreeplayKey: failed to set hs_key_focus_freeplay"); }
+}
+
+std::string SettingsService::GetTrainingPackKey() const
+{
+    if (!cvarManager_)
+    {
+        return trainingPackKey_;
+    }
+    return ReadStringCvar(settings::kKeyTrainingPackCvarName, trainingPackKey_.c_str());
+}
+
+void SettingsService::SetTrainingPackKey(const std::string& key)
+{
+    trainingPackKey_ = key;
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try { cvarManager_->getCvar(settings::kKeyTrainingPackCvarName).setValue(key); }
+    catch (...) { DiagnosticLogger::Log("SettingsService::SetTrainingPackKey: failed to set hs_key_training_pack"); }
+}
+
+std::string SettingsService::GetManualSessionKey() const
+{
+    if (!cvarManager_)
+    {
+        return manualSessionKey_;
+    }
+    return ReadStringCvar(settings::kKeyManualSessionCvarName, manualSessionKey_.c_str());
+}
+
+void SettingsService::SetManualSessionKey(const std::string& key)
+{
+    manualSessionKey_ = key;
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try { cvarManager_->getCvar(settings::kKeyManualSessionCvarName).setValue(key); }
+    catch (...) { DiagnosticLogger::Log("SettingsService::SetManualSessionKey: failed to set hs_key_manual_session"); }
 }
 
 int SettingsService::GetGamesPlayedIncrement() const
@@ -338,45 +392,54 @@ float SettingsService::GetPostMatchMmrDelaySeconds() const
     }
 }
 
-bool SettingsService::ForceLocalhostEnabled() const
-{
-    return forceLocalhost_;
-}
-
-void SettingsService::SetForceLocalhost(bool enabled)
-{
-    if (forceLocalhost_ == enabled)
-    {
-        return;
-    }
-
-    forceLocalhost_ = enabled;
-    UpdateForceCvar();
-
-    const std::string target = forceLocalhost_
-        ? settings::kLocalhostBaseUrl
-        : (manualBaseUrl_.empty() ? settings::kDefaultBaseUrl : manualBaseUrl_);
-    ApplyBaseUrl(target);
-}
-
-std::string SettingsService::NormalizeBaseUrl(const std::string& candidate) const
-{
-    return ::NormalizeBaseUrl(candidate);
-}
-
-void SettingsService::UpdateForceCvar() const
+uint64_t SettingsService::ParseUint64Cvar(const char* name, uint64_t defaultValue) const
 {
     if (!cvarManager_)
     {
-        return;
+        return defaultValue;
     }
 
     try
     {
-        cvarManager_->getCvar(settings::kForceLocalhostCvarName).setValue(forceLocalhost_ ? "1" : "0");
+        const std::string value = cvarManager_->getCvar(name).getStringValue();
+        return static_cast<uint64_t>(std::stoull(value));
     }
     catch (...)
     {
-        DiagnosticLogger::Log("SettingsService::UpdateForceCvar: failed to set hs_force_localhost");
+        return defaultValue;
+    }
+}
+
+int SettingsService::ParseIntCvar(const char* name, int defaultValue) const
+{
+    if (!cvarManager_)
+    {
+        return defaultValue;
+    }
+
+    try
+    {
+        return cvarManager_->getCvar(name).getIntValue();
+    }
+    catch (...)
+    {
+        return defaultValue;
+    }
+}
+
+std::string SettingsService::ReadStringCvar(const char* name, const char* fallback) const
+{
+    if (!cvarManager_)
+    {
+        return fallback ? std::string(fallback) : std::string();
+    }
+
+    try
+    {
+        return cvarManager_->getCvar(name).getStringValue();
+    }
+    catch (...)
+    {
+        return fallback ? std::string(fallback) : std::string();
     }
 }

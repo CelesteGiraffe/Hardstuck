@@ -23,6 +23,8 @@ public:
     // Import cached payloads from older queue files, if any.
     bool ReplayLegacyCache(std::string& error);
 
+    void SetLimits(uint64_t maxBytes, int maxFiles);
+
     std::filesystem::path GetStorePath() const { return storePath_; }
 
 private:
@@ -39,10 +41,13 @@ private:
     bool BuildSnapshot(const std::vector<PayloadSummary>& entries, HistorySnapshot& snapshot, std::string& error) const;
     bool ReadPayloadLines(std::vector<std::string>& lines, std::string& error) const;
     bool AppendLines(const std::vector<std::string>& payloads, std::string& error);
+    bool RotateIfNeeded(std::string& error);
 
     std::filesystem::path baseDirectory_;
     std::filesystem::path storePath_;
     std::filesystem::path legacyCachePath_;
     std::filesystem::path legacyBackupPath_;
     mutable std::mutex fileMutex_;
+    uint64_t maxBytes_{0};
+    int maxFiles_{1};
 };

@@ -12,6 +12,10 @@
 #include <cmath>
 
 
+static std::string HsResolveLocalUserId(ISettingsService* /*settingsService*/)
+{
+    return std::string("local");
+}
 
 std::string HsPlaylistNameFromServer(ServerWrapper server)
 {
@@ -155,9 +159,7 @@ bool HsCollectMatchPayloadComponents(
     outComponents.gamesPlayedDiff = settingsService
         ? settingsService->GetGamesPlayedIncrement()
         : 1;
-    outComponents.userId = settingsService
-        ? settingsService->GetUserId()
-        : std::string("unknown");
+    outComponents.userId = HsResolveLocalUserId(settingsService);
     outComponents.teamsJson = HsSerializeTeams(server);
     outComponents.scoreboardJson = HsSerializeScoreboard(server);
 
@@ -327,9 +329,7 @@ std::vector<std::string> HsBuildMmrSnapshotPayloads(
 
     const auto now = std::chrono::system_clock::now();
     const std::string timestamp = FormatTimestamp(now);
-    const std::string userId = settingsService
-        ? settingsService->GetUserId()
-        : std::string("unknown");
+    const std::string userId = HsResolveLocalUserId(settingsService);
     const auto snapshotTargets = PlaylistCatalog::GetManualSnapshotOrder();
     for (const PlaylistInfo* playlistInfo : snapshotTargets)
     {
@@ -404,9 +404,7 @@ std::string HsBuildSinglePlaylistSnapshotPayload(
 
     const auto now = std::chrono::system_clock::now();
     const std::string timestamp = FormatTimestamp(now);
-    const std::string userId = settingsService
-        ? settingsService->GetUserId()
-        : std::string("unknown");
+    const std::string userId = HsResolveLocalUserId(settingsService);
 
     return HsSerializeSnapshotPayload(timestamp, userId, playlistInfo, rating, hasRating);
 }

@@ -60,10 +60,21 @@ void Hardstuck::InitializeBackend()
 	std::filesystem::path dataDir;
 	if (settingsService_)
 	{
-		dataDir = settingsService_->GetSettingsPath().parent_path();
+		dataDir = static_cast<SettingsService*>(settingsService_.get())->GetDataDirectory();
+	}
+	if (dataDir.empty())
+	{
+		dataDir = std::filesystem::temp_directory_path() / "hardstuck";
 	}
 	DiagnosticLogger::Log(std::string("onLoad: creating LocalDataStore at ") + dataDir.string());
 	auto dataStore = std::make_unique<LocalDataStore>(dataDir);
+	if (settingsService_)
+	{
+		dataStore->SetLimits(
+			static_cast<SettingsService*>(settingsService_.get())->GetMaxStoreBytes(),
+			static_cast<SettingsService*>(settingsService_.get())->GetMaxStoreFiles()
+		);
+	}
 
 	std::string migrationNote;
 	if (!dataStore->ReplayLegacyCache(migrationNote))

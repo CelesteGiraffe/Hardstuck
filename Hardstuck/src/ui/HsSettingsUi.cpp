@@ -9,13 +9,22 @@
 
 #include <string>
 #include <cstring>
+#include <filesystem>
+#include <chrono>
 
 namespace
 {
     struct SettingsUiState
     {
-        char baseUrlBuf[256] = {0};
-        std::string cachedBaseUrl;
+        char dataDirBuf[260] = {0};
+        uint64_t maxBytes = 0;
+        int maxFiles = 0;
+        char keyFocusBuf[64] = {0};
+        char keyTrainingBuf[64] = {0};
+        char keyManualBuf[64] = {0};
+        std::filesystem::path storePath;
+        uint64_t storeSize = 0;
+        std::string lastWrite;
     };
 
     SettingsUiState& GetUiState()
@@ -37,54 +46,67 @@ namespace
 
     void SyncBuffers(SettingsUiState& uiState, ISettingsService& settingsService)
     {
-        const std::string currentBase = settingsService.GetBaseUrl();
+        const std::filesystem::path dataDir = settingsService.GetDataDirectory();
+        SafeStrCopy(uiState.dataDirBuf, dataDir.string(), sizeof(uiState.dataDirBuf));
+        uiState.maxBytes = settingsService.GetMaxStoreBytes();
+        uiState.maxFiles = settingsService.GetMaxStoreFiles();
+        SafeStrCopy(uiState.keyFocusBuf, settingsService.GetFocusFreeplayKey(), sizeof(uiState.keyFocusBuf));
+        SafeStrCopy(uiState.keyTrainingBuf, settingsService.GetTrainingPackKey(), sizeof(uiState.keyTrainingBuf));
+        SafeStrCopy(uiState.keyManualBuf, settingsService.GetManualSessionKey(), sizeof(uiState.keyManualBuf));
 
-        if (uiState.cachedBaseUrl != currentBase)
+        uiState.storePath = dataDir / "local_history.jsonl";
+        uiState.storeSize = 0;
+        uiState.lastWrite.clear();
+        std::error_code ec;
+        if (std::filesystem::exists(uiState.storePath, ec))
         {
-            SafeStrCopy(uiState.baseUrlBuf, currentBase, sizeof(uiState.baseUrlBuf));
-            uiState.cachedBaseUrl = currentBase;
+            uiState.storeSize = static_cast<uint64_t>(std::filesystem::file_size(uiState.storePath, ec));
+            auto writeTime = std::filesystem::last_write_time(uiState.storePath, ec);
+            if (!ec)
+            {
+                const auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+                    writeTime - decltype(writeTime)::clock::now() + std::chrono::system_clock::now());
+                uiState.lastWrite = FormatTimestamp(sctp);
+            }
         }
     }
 
-    void RenderCompanionLocationSection(SettingsUiState& uiState, ISettingsService& settingsService, CVarManagerWrapper& cvarManager)
+    void RenderStorageSection(SettingsUiState& uiState, ISettingsService& settingsService, CVarManagerWrapper& cvarManager)
     {
-        ImGui::TextWrapped("Where is the companion app running?");
+        ImGui::TextWrapped("Local storage location");
+        ImGui::InputText("Data directory", uiState.dataDirBuf, sizeof(uiState.dataDirBuf));
+        ImGui::InputScalar("Max file bytes", ImGuiDataType_U64, &uiState.maxBytes);
+        ImGui::InputInt("Max files to keep", &uiState.maxFiles);
 
-        bool companionOnThisPc = settingsService.ForceLocalhostEnabled();
-        if (ImGui::Checkbox("Companion app is on this PC (localhost)", &companionOnThisPc))
+        if (ImGui::Button("Save storage settings"))
         {
-            settingsService.SetForceLocalhost(companionOnThisPc);
-            const std::string updatedBase = settingsService.GetBaseUrl();
-            SafeStrCopy(uiState.baseUrlBuf, updatedBase, sizeof(uiState.baseUrlBuf));
-            uiState.cachedBaseUrl = updatedBase;
+            settingsService.SetDataDirectory(uiState.dataDirBuf);
+            settingsService.SetMaxStoreBytes(uiState.maxBytes);
+            settingsService.SetMaxStoreFiles(uiState.maxFiles);
             settingsService.SavePersistedSettings();
-            cvarManager.log(std::string("HS: companion app location set to ") + (companionOnThisPc ? "localhost" : "remote IP"));
+            cvarManager.log("HS: saved storage settings");
+            SyncBuffers(uiState, settingsService);
         }
 
-        ImGui::Spacing();
-        ImGui::TextWrapped("Companion app is on another IP? Enter its address below (example: http://192.168.1.x:4000). Replace 'x' with the machine running the companion app so uploads reach that host.");
-        ImGui::InputText("Companion app IP / URL", uiState.baseUrlBuf, sizeof(uiState.baseUrlBuf));
+        ImGui::Separator();
+        ImGui::TextWrapped("Current store: %s", uiState.storePath.string().c_str());
+        ImGui::Text("Size: %llu bytes", static_cast<unsigned long long>(uiState.storeSize));
+        ImGui::TextWrapped("Last write: %s", uiState.lastWrite.empty() ? "n/a" : uiState.lastWrite.c_str());
+    }
 
-        if (ImGui::Button("Save IP"))
+    void RenderKeybindSection(SettingsUiState& uiState, ISettingsService& settingsService)
+    {
+        ImGui::TextWrapped("Session labels (keybinds)");
+        ImGui::InputText("Mark focused freeplay", uiState.keyFocusBuf, sizeof(uiState.keyFocusBuf));
+        ImGui::InputText("Mark training pack", uiState.keyTrainingBuf, sizeof(uiState.keyTrainingBuf));
+        ImGui::InputText("Start/Stop manual session", uiState.keyManualBuf, sizeof(uiState.keyManualBuf));
+
+        if (ImGui::Button("Save keybinds"))
         {
-            settingsService.SetForceLocalhost(false);
-            settingsService.SetBaseUrl(uiState.baseUrlBuf);
-            const std::string sanitized = settingsService.GetBaseUrl();
-            SafeStrCopy(uiState.baseUrlBuf, sanitized, sizeof(uiState.baseUrlBuf));
-            uiState.cachedBaseUrl = sanitized;
+            settingsService.SetFocusFreeplayKey(uiState.keyFocusBuf);
+            settingsService.SetTrainingPackKey(uiState.keyTrainingBuf);
+            settingsService.SetManualSessionKey(uiState.keyManualBuf);
             settingsService.SavePersistedSettings();
-            cvarManager.log("HS: saved remote base URL");
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Insert example 192.168.1.x"))
-        {
-            SafeStrCopy(uiState.baseUrlBuf, settings::kLanExampleBaseUrl, sizeof(uiState.baseUrlBuf));
-            cvarManager.log("HS: inserted LAN example base URL");
-        }
-
-        if (settingsService.ForceLocalhostEnabled())
-        {
-            ImGui::TextWrapped("(Saving a remote IP automatically unchecks the localhost option.)");
         }
     }
 
@@ -124,9 +146,11 @@ void HsRenderSettingsUi(
     auto& uiState = GetUiState();
     SyncBuffers(uiState, *settingsService);
 
-    ImGui::TextUnformatted("Configure where Hardstuck : Rocket League Training Journal uploads are sent.");
+    ImGui::TextUnformatted("Local storage configuration and session labeling.");
 
-    RenderCompanionLocationSection(uiState, *settingsService, *cvarManager);
+    RenderStorageSection(uiState, *settingsService, *cvarManager);
+    ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
+    RenderKeybindSection(uiState, *settingsService);
 
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
     RenderActions(triggerManualUpload);

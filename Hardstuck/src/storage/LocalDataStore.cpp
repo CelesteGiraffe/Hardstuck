@@ -296,6 +296,11 @@ bool LocalDataStore::AppendLines(const std::vector<std::string>& payloads, std::
     std::error_code ec;
     std::filesystem::create_directories(storePath_.parent_path(), ec);
 
+    if (!RotateIfNeeded(error))
+    {
+        return false;
+    }
+
     std::ofstream output(storePath_, std::ios::out | std::ios::app);
     if (!output.is_open())
     {
@@ -306,6 +311,56 @@ bool LocalDataStore::AppendLines(const std::vector<std::string>& payloads, std::
     for (const auto& payload : payloads)
     {
         output << payload << "\n";
+    }
+    return true;
+}
+
+void LocalDataStore::SetLimits(uint64_t maxBytes, int maxFiles)
+{
+    maxBytes_ = maxBytes;
+    maxFiles_ = std::max(1, maxFiles);
+}
+
+bool LocalDataStore::RotateIfNeeded(std::string& error)
+{
+    if (maxBytes_ == 0 || maxFiles_ <= 0)
+    {
+        return true;
+    }
+
+    std::error_code ec;
+    const uint64_t size = std::filesystem::exists(storePath_, ec)
+        ? static_cast<uint64_t>(std::filesystem::file_size(storePath_, ec))
+        : 0;
+    if (ec)
+    {
+        error = std::string("Failed to inspect local store: ") + ec.message();
+        return false;
+    }
+    if (size < maxBytes_)
+    {
+        return true;
+    }
+
+    // simple rotation: store -> .1 -> .2 ...
+    const int maxRotation = std::max(1, maxFiles_ - 1);
+    for (int i = maxRotation; i >= 1; --i)
+    {
+        const std::filesystem::path older = std::filesystem::path(storePath_.string() + "." + std::to_string(i));
+        const std::filesystem::path newer = std::filesystem::path(storePath_.string() + "." + std::to_string(i + 1));
+        std::filesystem::remove(newer, ec);
+        ec.clear();
+        std::filesystem::rename(older, newer, ec);
+    }
+
+    const std::filesystem::path first = std::filesystem::path(storePath_.string() + ".1");
+    std::filesystem::remove(first, ec);
+    ec.clear();
+    std::filesystem::rename(storePath_, first, ec);
+    if (ec)
+    {
+        error = std::string("Failed to rotate local store: ") + ec.message();
+        return false;
     }
     return true;
 }
