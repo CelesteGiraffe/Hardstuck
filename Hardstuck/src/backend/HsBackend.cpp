@@ -49,6 +49,10 @@ void HsBackend::DispatchPayloadAsync(const std::string& endpoint, const std::str
         {
             lastResponseMessage_ = "Stored payload locally";
             lastErrorMessage_.clear();
+            {
+                std::lock_guard<std::mutex> historyLock(historyMutex_);
+                historyDirty_ = true;
+            }
         }
         else
         {
@@ -100,13 +104,20 @@ void HsBackend::FetchHistory()
         return;
     }
 
-    CleanupFinishedRequests();
-
     {
         std::lock_guard<std::mutex> lock(historyMutex_);
+        if (!historyDirty_)
+        {
+            historyLoading_ = false;
+            historyErrorMessage_.clear();
+            historyLastFetched_ = std::chrono::system_clock::now();
+            return;
+        }
         historyLoading_ = true;
         historyErrorMessage_.clear();
     }
+
+    CleanupFinishedRequests();
 
     DiagnosticLogger::Log("FetchHistory: reading local store");
 
@@ -121,6 +132,7 @@ void HsBackend::FetchHistory()
         {
             historySnapshot_ = std::move(parsed);
             historyLastFetched_ = std::chrono::system_clock::now();
+            historyDirty_ = false;
         }
 
         if (!error.empty())

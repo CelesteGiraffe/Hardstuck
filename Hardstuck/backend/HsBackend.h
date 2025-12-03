@@ -73,6 +73,7 @@ private:
     std::string historyErrorMessage_;
     bool historyLoading_{false};
     std::chrono::system_clock::time_point historyLastFetched_{};
+    bool historyDirty_{true};
 
     // Cached last match payload
     mutable std::mutex payloadMutex_;

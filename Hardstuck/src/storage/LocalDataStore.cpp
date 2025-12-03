@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cctype>
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <system_error>
 
@@ -119,6 +120,9 @@ bool LocalDataStore::ParsePayloadSummary(const std::string& payload, PayloadSumm
     summary.gamesPlayedDiff = HistoryJson::AsInt(HistoryJson::GetMember(root, "gamesPlayedDiff")).value_or(0);
     summary.source = HistoryJson::AsString(HistoryJson::GetMember(root, "source"))
                          .value_or(std::string("local_cache"));
+    summary.sessionType = HistoryJson::AsString(HistoryJson::GetMember(root, "sessionType"))
+                              .value_or(std::string());
+    summary.durationSeconds = HistoryJson::AsInt(HistoryJson::GetMember(root, "durationSeconds")).value_or(0);
     return true;
 }
 
@@ -146,6 +150,7 @@ bool LocalDataStore::BuildSnapshot(const std::vector<PayloadSummary>& entries,
     });
 
     int ordinal = 0;
+    std::map<std::string, int> lastMmrByPlaylist;
     for (const auto& entry : sorted)
     {
         MmrHistoryEntry mmrEntry;
@@ -156,6 +161,26 @@ bool LocalDataStore::BuildSnapshot(const std::vector<PayloadSummary>& entries,
         mmrEntry.gamesPlayedDiff = entry.gamesPlayedDiff;
         mmrEntry.source = entry.source.empty() ? std::string("local") : entry.source;
         snapshot.mmrHistory.emplace_back(std::move(mmrEntry));
+
+        const std::string sessionKey = entry.sessionType.empty() ? std::string("unknown") : entry.sessionType;
+        snapshot.aggregates.timeBySessionType[sessionKey] +=
+            static_cast<double>(std::max(0, entry.durationSeconds));
+
+        auto it = lastMmrByPlaylist.find(entry.playlist);
+        int delta = 0;
+        if (it != lastMmrByPlaylist.end())
+        {
+            delta = entry.mmr - it->second;
+        }
+        lastMmrByPlaylist[entry.playlist] = entry.mmr;
+
+        HistorySnapshot::Aggregates::MmrDelta deltaEntry;
+        deltaEntry.timestamp = entry.timestamp;
+        deltaEntry.playlist = entry.playlist;
+        deltaEntry.sessionType = entry.sessionType.empty() ? std::string("unknown") : entry.sessionType;
+        deltaEntry.mmr = entry.mmr;
+        deltaEntry.delta = delta;
+        snapshot.aggregates.mmrDeltas.emplace_back(std::move(deltaEntry));
     }
 
     snapshot.status.mmrEntries = static_cast<int>(snapshot.mmrHistory.size());

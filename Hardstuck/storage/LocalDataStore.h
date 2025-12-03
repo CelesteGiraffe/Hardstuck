@@ -36,6 +36,8 @@ private:
         int mmr{0};
         int gamesPlayedDiff{0};
         std::string source;
+        std::string sessionType;
+        int durationSeconds{0};
     };
 
     bool ParsePayloadSummary(const std::string& payload, PayloadSummary& summary, std::string& error) const;

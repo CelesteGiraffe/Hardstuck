@@ -15,6 +15,8 @@ void HsRenderOverlayUi(
     CVarManagerWrapper* cvarManager,
     const std::string& lastResponse,
     const std::string& lastError,
+    const std::string& activeSessionLabel,
+    bool manualSessionActive,
     HsTriggerManualUploadFn triggerManualUpload,
     HsExecuteHistoryWindowFn executeHistoryWindowCommand
 );

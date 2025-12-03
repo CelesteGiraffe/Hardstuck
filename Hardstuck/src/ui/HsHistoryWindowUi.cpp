@@ -271,6 +271,36 @@ namespace
             ImGui::Separator();
         }
     }
+
+    void RenderAggregates(const HistorySnapshot::Aggregates& aggregates)
+    {
+        if (!aggregates.timeBySessionType.empty())
+        {
+            ImGui::Separator();
+            ImGui::Text("Time by session type (minutes)");
+            for (const auto& kv : aggregates.timeBySessionType)
+            {
+                ImGui::Text("%s: %.1f", kv.first.c_str(), kv.second / 60.0);
+            }
+        }
+
+        if (!aggregates.mmrDeltas.empty())
+        {
+            ImGui::Separator();
+            ImGui::Text("MMR changes");
+            int displayed = 0;
+            for (auto it = aggregates.mmrDeltas.rbegin(); it != aggregates.mmrDeltas.rend() && displayed < 10; ++it, ++displayed)
+            {
+                const auto& delta = *it;
+                ImGui::Text("%s | %s | %s | %d (%+d)",
+                    delta.timestamp.c_str(),
+                    delta.playlist.c_str(),
+                    delta.sessionType.c_str(),
+                    delta.mmr,
+                    delta.delta);
+            }
+        }
+    }
 }
 
 void HsRenderHistoryWindowUi(
@@ -278,7 +308,9 @@ void HsRenderHistoryWindowUi(
     std::string const& errorMessage,
     bool loading,
     std::chrono::system_clock::time_point lastFetched,
-    bool* showHistoryWindow
+    bool* showHistoryWindow,
+    const std::string& activeSessionLabel,
+    bool manualSessionActive
 )
 {
     if (ImGui::GetCurrentContext() == nullptr)
@@ -295,6 +327,9 @@ void HsRenderHistoryWindowUi(
     }
 
     RenderStatus(errorMessage, loading, lastFetched);
+    ImGui::Text("Active session: %s%s",
+        activeSessionLabel.empty() ? "unknown" : activeSessionLabel.c_str(),
+        manualSessionActive ? " (manual)" : "");
     RenderStatusSummary(snapshot.status);
 
     ImGui::Text("Training vs MMR activity");
@@ -307,6 +342,7 @@ void HsRenderHistoryWindowUi(
     ImGui::Separator();
     RenderMmrEntries(snapshot.mmrHistory);
     RenderTrainingEntries(snapshot.trainingHistory);
+    RenderAggregates(snapshot.aggregates);
 
     ImGui::End();
 }

@@ -13,5 +13,7 @@ void HsRenderHistoryWindowUi(
     std::string const& errorMessage,
     bool loading,
     std::chrono::system_clock::time_point lastFetched,
-    bool* showHistoryWindow
+    bool* showHistoryWindow,
+    const std::string& activeSessionLabel,
+    bool manualSessionActive
 );

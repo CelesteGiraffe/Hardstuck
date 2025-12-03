@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 struct HistoryFilters {
     std::string playlist;
@@ -48,4 +49,17 @@ struct HistorySnapshot {
     std::vector<MmrHistoryEntry> mmrHistory;
     std::vector<TrainingHistoryEntry> trainingHistory;
     HistoryStatus status;
+    struct Aggregates
+    {
+        std::map<std::string, double> timeBySessionType; // seconds
+        struct MmrDelta
+        {
+            std::string timestamp;
+            std::string playlist;
+            std::string sessionType;
+            int mmr = 0;
+            int delta = 0;
+        };
+        std::vector<MmrDelta> mmrDeltas;
+    } aggregates;
 };

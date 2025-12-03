@@ -143,10 +143,15 @@ bool Hardstuck::BindImGuiContext() const
 
 void Hardstuck::RenderOverlay(const std::string& lastResponse, const std::string& lastError)
 {
+	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
+	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
+	const bool manualActive = focusedSessionActive_ || currentSessionLabel_ != SessionLabel::Unknown;
 	HsRenderOverlayUi(
 		cvarManager.get(),
 		lastResponse,
 		lastError,
+		sessionLabel,
+		manualActive,
 		[this]() { TriggerManualUpload(); },
 		[this]() { ExecuteHistoryWindowCommand(); }
 	);
@@ -176,7 +181,10 @@ void Hardstuck::RenderHistoryWindow()
 	bool loading = false;
 	std::chrono::system_clock::time_point lastFetched;
 	backend_->SnapshotHistory(snapshot, errorMessage, loading, lastFetched);
-	HsRenderHistoryWindowUi(snapshot, errorMessage, loading, lastFetched, &showHistoryWindow_);
+	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
+	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
+	const bool manualActive = focusedSessionActive_ || currentSessionLabel_ != SessionLabel::Unknown;
+	HsRenderHistoryWindowUi(snapshot, errorMessage, loading, lastFetched, &showHistoryWindow_, sessionLabel, manualActive);
 }
 
 void Hardstuck::RenderSettings()

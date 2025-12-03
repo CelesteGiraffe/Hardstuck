@@ -17,6 +17,8 @@ void HsRenderOverlayUi(
     CVarManagerWrapper* cvarManager,
     const std::string& lastResponse,
     const std::string& lastError,
+    const std::string& activeSessionLabel,
+    bool manualSessionActive,
     HsTriggerManualUploadFn triggerManualUpload,
     HsExecuteHistoryWindowFn executeHistoryWindowCommand
 )
@@ -52,7 +54,10 @@ void HsRenderOverlayUi(
         return;
     }
 
-    ImGui::TextWrapped("Uploads match summaries to the Hardstuck : Rocket League Training Journal API.");
+    ImGui::TextWrapped("Local capture + history viewer");
+    ImGui::TextWrapped("Active session: %s%s",
+        activeSessionLabel.empty() ? "unknown" : activeSessionLabel.c_str(),
+        manualSessionActive ? " (manual)" : "");
 
     if (!lastResponse.empty())
     {
