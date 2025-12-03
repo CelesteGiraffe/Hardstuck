@@ -189,7 +189,8 @@ void Hardstuck::RenderSettings()
 	HsRenderSettingsUi(
 		settingsService_.get(),
 		cvarManager.get(),
-		[this]() { TriggerManualUpload(); }
+		[this]() { TriggerManualUpload(); },
+		backend_ ? backend_->GetStorePath() : std::filesystem::path()
 	);
 }
 

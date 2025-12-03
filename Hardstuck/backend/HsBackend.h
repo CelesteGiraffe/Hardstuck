@@ -1,6 +1,7 @@
 // HsBackend.h
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <deque>
@@ -55,6 +56,8 @@ public:
 
     // Should be called when shutting down to clean up ready futures.
     void CleanupFinishedRequests();
+
+    std::filesystem::path GetStorePath() const;
 
 private:
     // Non-owning pointers to plugin services

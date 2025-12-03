@@ -1,6 +1,7 @@
 // HsSettingsUi.h
 #pragma once
 
+#include <filesystem>
 #include <functional>
 
 class ISettingsService;
@@ -13,5 +14,6 @@ using HsTriggerManualUploadFn       = std::function<void()>;
 void HsRenderSettingsUi(
     ISettingsService* settingsService,
     CVarManagerWrapper* cvarManager,
-    HsTriggerManualUploadFn triggerManualUpload
+    HsTriggerManualUploadFn triggerManualUpload,
+    const std::filesystem::path& storePath
 );

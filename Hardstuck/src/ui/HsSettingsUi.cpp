@@ -44,7 +44,7 @@ namespace
         dest[destSize - 1] = '\0';
     }
 
-    void SyncBuffers(SettingsUiState& uiState, ISettingsService& settingsService)
+    void SyncBuffers(SettingsUiState& uiState, ISettingsService& settingsService, const std::filesystem::path& currentStorePath)
     {
         const std::filesystem::path dataDir = settingsService.GetDataDirectory();
         SafeStrCopy(uiState.dataDirBuf, dataDir.string(), sizeof(uiState.dataDirBuf));
@@ -54,7 +54,7 @@ namespace
         SafeStrCopy(uiState.keyTrainingBuf, settingsService.GetTrainingPackKey(), sizeof(uiState.keyTrainingBuf));
         SafeStrCopy(uiState.keyManualBuf, settingsService.GetManualSessionKey(), sizeof(uiState.keyManualBuf));
 
-        uiState.storePath = dataDir / "local_history.jsonl";
+        uiState.storePath = currentStorePath.empty() ? dataDir / "local_history.jsonl" : currentStorePath;
         uiState.storeSize = 0;
         uiState.lastWrite.clear();
         std::error_code ec;
@@ -85,7 +85,7 @@ namespace
             settingsService.SetMaxStoreFiles(uiState.maxFiles);
             settingsService.SavePersistedSettings();
             cvarManager.log("HS: saved storage settings");
-            SyncBuffers(uiState, settingsService);
+            SyncBuffers(uiState, settingsService, uiState.storePath);
         }
 
         ImGui::Separator();
@@ -128,7 +128,8 @@ namespace
 void HsRenderSettingsUi(
     ISettingsService* settingsService,
     CVarManagerWrapper* cvarManager,
-    HsTriggerManualUploadFn triggerManualUpload
+    HsTriggerManualUploadFn triggerManualUpload,
+    const std::filesystem::path& storePath
 )
 {
     if (ImGui::GetCurrentContext() == nullptr)
@@ -144,7 +145,7 @@ void HsRenderSettingsUi(
 
     [[maybe_unused]] auto styleScope = hs::ui::ApplyStyle();
     auto& uiState = GetUiState();
-    SyncBuffers(uiState, *settingsService);
+    SyncBuffers(uiState, *settingsService, storePath);
 
     ImGui::TextUnformatted("Local storage configuration and session labeling.");
 

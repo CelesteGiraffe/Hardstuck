@@ -3,6 +3,7 @@
 #include "backend/HsBackend.h"
 
 #include <algorithm>
+#include <filesystem>
 
 #include "diagnostics/DiagnosticLogger.h"
 #include "settings/SettingsService.h"
@@ -214,6 +215,15 @@ void HsBackend::SnapshotStorageDiagnostics(std::string& status, size_t& buffered
     std::lock_guard<std::mutex> lock(requestMutex_);
     status = lastWriteStatus_;
     bufferedCount = bufferedPayloads_.size();
+}
+
+std::filesystem::path HsBackend::GetStorePath() const
+{
+    if (!dataStore_)
+    {
+        return std::filesystem::path();
+    }
+    return dataStore_->GetStorePath();
 }
 
 void HsBackend::SnapshotHistory(HistorySnapshot& snapshot,
