@@ -99,6 +99,7 @@ private:
 	int FetchLatestMmr(int playlistMmrId) const;
 	float GetPostMatchDelaySeconds() const;
 	void RegisterSessionCommands();
+	void RegisterUiCommands();
 	enum class SessionLabel { Unknown, FocusedFreeplay, TrainingPack, Workshop, Casual, Ranked };
 	SessionLabel ResolveSessionLabel(bool inFreeplay, int playlistMmrId) const;
 	std::string SessionLabelToString(SessionLabel label) const;

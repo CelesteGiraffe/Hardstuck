@@ -22,6 +22,7 @@ void Hardstuck::onLoad()
 	InitializeSettingsService();
 	InitializeBackend();
 	RegisterSessionCommands();
+	RegisterUiCommands();
 
 	// Hook match events so post-match staged capture and uploads run automatically.
 	try
@@ -683,6 +684,21 @@ void Hardstuck::RegisterSessionCommands()
 		"hs_toggle_focus_session",
 		[this](auto) { ToggleFocusedFreeplayTimer(); },
 		"Start/stop focused freeplay manual session",
+		PERMISSION_ALL
+	);
+}
+
+void Hardstuck::RegisterUiCommands()
+{
+	if (!cvarManager)
+	{
+		return;
+	}
+
+	cvarManager->registerNotifier(
+		"hs_history_window",
+		[this](auto) { OpenHistoryWindow(); },
+		"Open the Hardstuck history window and refresh history data",
 		PERMISSION_ALL
 	);
 }
