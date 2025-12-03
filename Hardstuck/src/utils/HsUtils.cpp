@@ -39,6 +39,42 @@ std::string FormatTimestamp(const std::chrono::system_clock::time_point& timePoi
     return oss.str();
 }
 
+std::string FormatTimestampUk(const std::chrono::system_clock::time_point& timePoint)
+{
+    std::time_t now = std::chrono::system_clock::to_time_t(timePoint);
+    std::tm tmUtc;
+#ifdef _WIN32
+    gmtime_s(&tmUtc, &now);
+#else
+    gmtime_r(&now, &tmUtc);
+#endif
+
+    std::ostringstream oss;
+    // UK-style: DD/MM/YYYY HH:MM:SS (24h)
+    oss << std::put_time(&tmUtc, "%d/%m/%Y %H:%M:%S");
+    return oss.str();
+}
+
+std::string FormatTimestampStringUk(const std::string& timestamp)
+{
+    if (timestamp.empty())
+    {
+        return timestamp;
+    }
+
+    std::tm tmUtc{};
+    std::istringstream iss(timestamp);
+    iss >> std::get_time(&tmUtc, "%Y-%m-%dT%H:%M:%SZ");
+    if (iss.fail())
+    {
+        return timestamp;
+    }
+
+    std::ostringstream oss;
+    oss << std::put_time(&tmUtc, "%d/%m/%Y %H:%M:%S");
+    return oss.str();
+}
+
 std::string JsonEscape(const std::string& value)
 {
     std::ostringstream oss;

@@ -72,7 +72,7 @@ namespace
             {
                 const auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
                     writeTime - decltype(writeTime)::clock::now() + std::chrono::system_clock::now());
-                uiState.lastWrite = FormatTimestamp(sctp);
+                uiState.lastWrite = FormatTimestampUk(sctp);
             }
         }
     }

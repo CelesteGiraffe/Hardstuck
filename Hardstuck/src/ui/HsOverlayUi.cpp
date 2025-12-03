@@ -177,7 +177,7 @@ void HsRenderOverlayUi(
     ImGui::Text("Entries: %d mmr | %d training", summary.mmrEntries, summary.trainingEntries);
     if (historyLastFetched.time_since_epoch().count() > 0)
     {
-        ImGui::Text("Last fetched: %s", FormatTimestamp(historyLastFetched).c_str());
+        ImGui::Text("Last fetched: %s", FormatTimestampUk(historyLastFetched).c_str());
     }
     ImGui::Text("Latest MMR: %d (%+d)", summary.latestMmr, summary.latestMmrDelta);
     ImGui::Text("Training on that day: %.1f min", summary.latestTrainingMinutes);

@@ -264,10 +264,10 @@ namespace
         overview.trainingEntries = snapshot.status.trainingSessions;
         overview.mmrLimit = snapshot.status.mmrLimit;
         overview.trainingLimit = snapshot.status.sessionLimit;
-        overview.lastMmrTimestamp = snapshot.status.lastMmrTimestamp;
-        overview.lastTrainingTimestamp = snapshot.status.lastTrainingTimestamp;
-        overview.generatedAt = snapshot.status.generatedAt;
-        overview.receivedAt = snapshot.status.receivedAt;
+        overview.lastMmrTimestamp = FormatTimestampStringUk(snapshot.status.lastMmrTimestamp);
+        overview.lastTrainingTimestamp = FormatTimestampStringUk(snapshot.status.lastTrainingTimestamp);
+        overview.generatedAt = FormatTimestampStringUk(snapshot.status.generatedAt);
+        overview.receivedAt = FormatTimestampStringUk(snapshot.status.receivedAt);
 
         if (!sortedMmr.empty())
         {
@@ -313,7 +313,7 @@ namespace
         }
         if (lastFetched.time_since_epoch().count() > 0)
         {
-            ImGui::Text("Last fetched: %s", FormatTimestamp(lastFetched).c_str());
+        ImGui::Text("Last fetched: %s", FormatTimestampUk(lastFetched).c_str());
         }
 
         ImGui::Text("Active session: %s%s",
@@ -581,7 +581,7 @@ namespace
         {
             ImGui::TextUnformatted(entry.source.c_str());
             ImGui::NextColumn();
-            ImGui::TextUnformatted(entry.timestamp.c_str());
+            ImGui::TextUnformatted(FormatTimestampStringUk(entry.timestamp).c_str());
             ImGui::NextColumn();
             ImGui::TextUnformatted(entry.playlist.c_str());
             ImGui::NextColumn();
@@ -619,9 +619,9 @@ namespace
 
         for (const auto& entry : entries)
         {
-            ImGui::TextUnformatted(entry.startedTime.c_str());
+            ImGui::TextUnformatted(FormatTimestampStringUk(entry.startedTime).c_str());
             ImGui::NextColumn();
-            ImGui::TextUnformatted(entry.finishedTime.c_str());
+            ImGui::TextUnformatted(FormatTimestampStringUk(entry.finishedTime).c_str());
             ImGui::NextColumn();
             ImGui::TextUnformatted(entry.presetId.c_str());
             ImGui::NextColumn();
@@ -688,7 +688,7 @@ namespace
             for (auto it = aggregates.mmrDeltas.rbegin(); it != aggregates.mmrDeltas.rend() && displayed < 12; ++it, ++displayed)
             {
                 const auto& delta = *it;
-                ImGui::TextUnformatted(delta.timestamp.c_str());
+                ImGui::TextUnformatted(FormatTimestampStringUk(delta.timestamp).c_str());
                 ImGui::NextColumn();
                 ImGui::TextUnformatted(delta.playlist.c_str());
                 ImGui::NextColumn();
