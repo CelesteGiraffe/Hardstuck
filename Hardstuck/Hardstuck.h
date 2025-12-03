@@ -19,6 +19,7 @@ constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_M
 #include "utils/HsUtils.h"
 #include "backend/HsBackend.h"
 #include "payload/HsPayloadBuilder.h"
+#include <chrono>
 
 // ImGui includes are provided via pch.h
 
@@ -89,6 +90,16 @@ private:
 	void RemovePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending);
 	int FetchLatestMmr(int playlistMmrId) const;
 	float GetPostMatchDelaySeconds() const;
+	void RegisterSessionCommands();
+	enum class SessionLabel { Unknown, FocusedFreeplay, TrainingPack, Workshop, Casual, Ranked };
+	SessionLabel ResolveSessionLabel(bool inFreeplay, int playlistMmrId) const;
+	std::string SessionLabelToString(SessionLabel label) const;
+	void SetSessionLabel(SessionLabel label, const char* reason);
+	void ToggleFocusedFreeplayTimer();
+	void StartFocusedFreeplayTimer();
+	void StopFocusedFreeplayTimer();
+	void WriteFocusedSessionRecord(std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end);
+	std::string CurrentSessionTypeString(bool inFreeplay, int playlistMmrId) const;
 
 	std::unique_ptr<class HsBackend> backend_;
 	bool showHistoryWindow_ = false;
@@ -96,4 +107,7 @@ private:
 	ImGuiContext* imguiContext_ = nullptr;
 	bool menuOpen_ = false;
 	std::unique_ptr<ISettingsService> settingsService_;
+	SessionLabel currentSessionLabel_{SessionLabel::Unknown};
+	bool focusedSessionActive_{false};
+	std::chrono::system_clock::time_point focusedSessionStart_{};
 };

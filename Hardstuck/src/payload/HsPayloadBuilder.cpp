@@ -160,6 +160,7 @@ bool HsCollectMatchPayloadComponents(
         ? settingsService->GetGamesPlayedIncrement()
         : 1;
     outComponents.userId = HsResolveLocalUserId(settingsService);
+    outComponents.sessionType = "unknown";
     outComponents.teamsJson = HsSerializeTeams(server);
     outComponents.scoreboardJson = HsSerializeScoreboard(server);
 
@@ -189,7 +190,8 @@ std::string HsBuildMatchPayloadFromComponents(
         << "\"playlist\":" << JsonEscape(components.playlistName) << ','
         << "\"mmr\":" << mmr << ','
         << "\"gamesPlayedDiff\":" << components.gamesPlayedDiff << ','
-        << "\"source\":\"bakkes\",";
+        << "\"source\":\"bakkes\","
+        << "\"sessionType\":" << JsonEscape(components.sessionType.empty() ? std::string("unknown") : components.sessionType) << ',';
 
     oss << "\"userId\":" << JsonEscape(components.userId) << ',';
     oss << "\"teams\":" << components.teamsJson << ',';
@@ -270,7 +272,8 @@ static std::string HsSerializeSnapshotPayload(const std::string& timestamp,
                                                const std::string& userId,
                                                const PlaylistInfo& playlistInfo,
                                                float rating,
-                                               bool hasRating)
+                                               bool hasRating,
+                                               const std::string& sessionType)
 {
     const int roundedRating = hasRating ? static_cast<int>(std::round(rating)) : 0;
 
@@ -288,6 +291,7 @@ static std::string HsSerializeSnapshotPayload(const std::string& timestamp,
         << "\"mmr\":" << roundedRating << ','
         << "\"gamesPlayedDiff\":0,"
         << "\"source\":\"bakkes_snapshot\","
+        << "\"sessionType\":" << JsonEscape(sessionType.empty() ? std::string("ranked") : sessionType) << ','
         << "\"userId\":" << JsonEscape(userId) << ','
         << "\"teams\":[],"
         << "\"scoreboard\":[]"
@@ -298,12 +302,14 @@ static std::string HsSerializeSnapshotPayload(const std::string& timestamp,
 std::string HsBuildMatchPayload(
     ServerWrapper server,
     GameWrapper* gameWrapper,
-    ISettingsService* settingsService
+    ISettingsService* settingsService,
+    const std::string& sessionType
 )
 {
     HsMatchPayloadComponents components;
     int playlistMmrId = 0;
     HsCollectMatchPayloadComponents(server, settingsService, components, playlistMmrId);
+    components.sessionType = sessionType;
 
     float mmr = 0.0f;
     const bool hasRating = HsTryFetchPlaylistRating(gameWrapper, playlistMmrId, mmr);
@@ -316,7 +322,8 @@ std::string HsBuildMatchPayload(
 
 std::vector<std::string> HsBuildMmrSnapshotPayloads(
     GameWrapper* gameWrapper,
-    ISettingsService* settingsService
+    ISettingsService* settingsService,
+    const std::string& sessionType
 )
 {
     std::vector<std::string> payloads;
@@ -359,7 +366,7 @@ std::vector<std::string> HsBuildMmrSnapshotPayloads(
         const int roundedRating = hasRating ? static_cast<int>(std::round(rating)) : 0;
 
         payloads.emplace_back(
-            HsSerializeSnapshotPayload(timestamp, userId, *playlistInfo, rating, hasRating)
+            HsSerializeSnapshotPayload(timestamp, userId, *playlistInfo, rating, hasRating, sessionType)
         );
     }
 
@@ -374,7 +381,8 @@ std::vector<std::string> HsBuildMmrSnapshotPayloads(
 std::string HsBuildSinglePlaylistSnapshotPayload(
     GameWrapper* gameWrapper,
     ISettingsService* settingsService,
-    const PlaylistInfo& playlistInfo
+    const PlaylistInfo& playlistInfo,
+    const std::string& sessionType
 )
 {
     if (!gameWrapper)
@@ -406,5 +414,5 @@ std::string HsBuildSinglePlaylistSnapshotPayload(
     const std::string timestamp = FormatTimestamp(now);
     const std::string userId = HsResolveLocalUserId(settingsService);
 
-    return HsSerializeSnapshotPayload(timestamp, userId, playlistInfo, rating, hasRating);
+    return HsSerializeSnapshotPayload(timestamp, userId, playlistInfo, rating, hasRating, sessionType);
 }

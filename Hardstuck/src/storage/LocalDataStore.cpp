@@ -350,7 +350,11 @@ bool LocalDataStore::RotateIfNeeded(std::string& error)
         const std::filesystem::path newer = std::filesystem::path(storePath_.string() + "." + std::to_string(i + 1));
         std::filesystem::remove(newer, ec);
         ec.clear();
-        std::filesystem::rename(older, newer, ec);
+        if (std::filesystem::exists(older, ec))
+        {
+            ec.clear();
+            std::filesystem::rename(older, newer, ec);
+        }
     }
 
     const std::filesystem::path first = std::filesystem::path(storePath_.string() + ".1");

@@ -62,7 +62,7 @@ void HsBackend::DispatchPayloadAsync(const std::string& endpoint, const std::str
     }
 }
 
-bool HsBackend::UploadMmrSnapshot(const char* contextTag)
+bool HsBackend::UploadMmrSnapshot(const char* contextTag, const std::string& sessionType)
 {
     const char* tag = contextTag ? contextTag : "unknown";
 
@@ -72,7 +72,7 @@ bool HsBackend::UploadMmrSnapshot(const char* contextTag)
         return false;
     }
 
-    auto payloads = HsBuildMmrSnapshotPayloads(gameWrapper_, settingsService_);
+    auto payloads = HsBuildMmrSnapshotPayloads(gameWrapper_, settingsService_, sessionType);
     if (payloads.empty())
     {
         DiagnosticLogger::Log(std::string("UploadMmrSnapshot: no snapshot payloads produced for context ") + tag);

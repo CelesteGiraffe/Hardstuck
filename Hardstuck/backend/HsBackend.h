@@ -29,7 +29,7 @@ public:
 
     // Upload a snapshot of ranked MMR for all configured playlists.
     // Returns true if at least one payload was dispatched.
-    bool UploadMmrSnapshot(const char* contextTag);
+    bool UploadMmrSnapshot(const char* contextTag, const std::string& sessionType);
 
     // Fetch history from the API and update internal cache.
     void FetchHistory();

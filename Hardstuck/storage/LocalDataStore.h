@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <mutex>
+#include <cstdint>
 #include <string>
 #include <vector>
 
