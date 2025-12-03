@@ -3,6 +3,7 @@
 #include "ISettingsService.h"
 
 #include <memory>
+#include <vector>
 
 class CVarManagerWrapper;
 
@@ -22,16 +23,15 @@ public:
     void SetMaxStoreBytes(uint64_t bytes) override;
     int GetMaxStoreFiles() const override;
     void SetMaxStoreFiles(int files) override;
-    std::string GetFocusFreeplayKey() const override;
-    void SetFocusFreeplayKey(const std::string& key) override;
-    std::string GetTrainingPackKey() const override;
-    void SetTrainingPackKey(const std::string& key) override;
-    std::string GetManualSessionKey() const override;
-    void SetManualSessionKey(const std::string& key) override;
+    std::vector<std::string> GetFocusList() const override;
+    void SetFocusList(const std::vector<std::string>& focuses) override;
     int GetGamesPlayedIncrement() const override;
     float GetPostMatchMmrDelaySeconds() const override;
 
 private:
+    static std::vector<std::string> NormalizeFocusList(const std::vector<std::string>& focuses);
+    static std::string SerializeFocusList(const std::vector<std::string>& focuses);
+    static std::vector<std::string> DeserializeFocusList(const std::string& serialized);
     uint64_t ParseUint64Cvar(const char* name, uint64_t defaultValue) const;
     int ParseIntCvar(const char* name, int defaultValue) const;
     std::string ReadStringCvar(const char* name, const char* fallback) const;
@@ -41,8 +41,6 @@ private:
     std::filesystem::path dataDirectory_;
     uint64_t maxStoreBytes_ = 5 * 1024 * 1024; // 5MB default cap
     int maxStoreFiles_ = 4;
-    std::string focusFreeplayKey_ = "F7";
-    std::string trainingPackKey_ = "F8";
-    std::string manualSessionKey_ = "F9";
+    std::vector<std::string> focusList_{"Freeplay focus", "Training pack focus"};
     mutable std::string installId_;
 };

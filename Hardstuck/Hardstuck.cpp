@@ -6,8 +6,10 @@
 #include "settings/SettingsService.h"
 #include "storage/LocalDataStore.h"
 #include "src/user/UserIdResolver.h"
+#include <algorithm>
 #include <sstream>
 #include <filesystem>
+#include <cctype>
 
 // Using the plugin_version symbol from Hardstuck.h's include of version.h
 BAKKESMOD_PLUGIN(Hardstuck, "Hardstuck : Rocket League Training Journal", plugin_version, PERMISSION_ALL)
@@ -21,7 +23,6 @@ void Hardstuck::onLoad()
 	// Ensure settings service and backend are initialized early so UI and backend operations work.
 	InitializeSettingsService();
 	InitializeBackend();
-	RegisterSessionCommands();
 	RegisterUiCommands();
 
 	// Hook match events so post-match staged capture and uploads run automatically.
@@ -142,8 +143,20 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse,
 	std::chrono::system_clock::time_point historyLastFetched)
 {
 	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
-	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
-	const bool manualActive = focusedSessionActive_ || currentSessionLabel_ != SessionLabel::Unknown;
+	const std::string sessionLabel = activeFocus_.empty()
+		? CurrentSessionTypeString(inFreeplay, 0)
+		: activeFocus_;
+	const bool manualActive = focusedSessionActive_;
+	std::vector<std::string> focuses;
+	if (settingsService_)
+	{
+		focuses = settingsService_->GetFocusList();
+	}
+	const bool focusExists = std::find(focuses.begin(), focuses.end(), activeFocus_) != focuses.end();
+	if ((!focusExists || activeFocus_.empty()) && !focuses.empty())
+	{
+		activeFocus_ = focuses.front();
+	}
 	HsRenderOverlayUi(
 		cvarManager.get(),
 		lastResponse,
@@ -154,6 +167,10 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse,
 		historyLastFetched,
 		sessionLabel,
 		manualActive,
+		focuses,
+		activeFocus_,
+		[this](const std::string& focus) { SetActiveFocus(focus); },
+		[this]() { ToggleFocusTimer(); },
 		[this]() { ExecuteHistoryWindowCommand(); },
 		[this]() { FetchHistory(); }
 	);
@@ -178,8 +195,10 @@ void Hardstuck::RenderHistoryWindow(const HistorySnapshot& snapshot,
 	std::chrono::system_clock::time_point lastFetched)
 {
 	const bool inFreeplay = IsInFreeplay(gameWrapper.get());
-	const std::string sessionLabel = CurrentSessionTypeString(inFreeplay, 0);
-	const bool manualActive = focusedSessionActive_ || currentSessionLabel_ != SessionLabel::Unknown;
+	const std::string sessionLabel = activeFocus_.empty()
+		? CurrentSessionTypeString(inFreeplay, 0)
+		: activeFocus_;
+	const bool manualActive = focusedSessionActive_;
 	HsRenderHistoryWindowUi(snapshot, errorMessage, loading, lastFetched, &showHistoryWindow_, sessionLabel, manualActive);
 }
 
@@ -591,47 +610,48 @@ bool Hardstuck::IsActiveOverlay()
 	return true;
 }
 
-std::string Hardstuck::SessionLabelToString(SessionLabel label) const
+std::string Hardstuck::CurrentSessionTypeString(bool inFreeplay, int playlistMmrId) const
 {
-	switch (label)
+	if (focusedSessionActive_)
 	{
-	case SessionLabel::FocusedFreeplay: return "focused_freeplay";
-	case SessionLabel::TrainingPack:    return "training_pack";
-	case SessionLabel::Workshop:        return "workshop";
-	case SessionLabel::Casual:          return "casual";
-	case SessionLabel::Ranked:          return "ranked";
-	default:                            return "unknown";
-	}
-}
-
-Hardstuck::SessionLabel Hardstuck::ResolveSessionLabel(bool inFreeplay, int playlistMmrId) const
-{
-	if (currentSessionLabel_ != SessionLabel::Unknown)
-	{
-		return currentSessionLabel_;
+		return SanitizeSessionType(activeFocus_);
 	}
 
 	if (inFreeplay)
 	{
-		return SessionLabel::FocusedFreeplay;
+		return "focused_training";
 	}
 
-	return playlistMmrId == 0 ? SessionLabel::Casual : SessionLabel::Ranked;
+	return playlistMmrId == 0 ? "casual" : "ranked";
 }
 
-std::string Hardstuck::CurrentSessionTypeString(bool inFreeplay, int playlistMmrId) const
+std::string Hardstuck::SanitizeSessionType(const std::string& focus) const
 {
-	return SessionLabelToString(ResolveSessionLabel(inFreeplay, playlistMmrId));
+	std::string cleaned;
+	cleaned.reserve(focus.size());
+	for (char ch : focus)
+	{
+		if (std::isalnum(static_cast<unsigned char>(ch)))
+		{
+			cleaned.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+		}
+		else if (ch == ' ' || ch == '-' || ch == '_')
+		{
+			if (cleaned.empty() || cleaned.back() == '_')
+			{
+				continue;
+			}
+			cleaned.push_back('_');
+		}
+	}
+	if (cleaned.empty())
+	{
+		return "focused_training";
+	}
+	return cleaned;
 }
 
-void Hardstuck::SetSessionLabel(SessionLabel label, const char* reason)
-{
-	currentSessionLabel_ = label;
-	DiagnosticLogger::Log(std::string("Session label set to ") + SessionLabelToString(label) +
-		" (" + (reason ? reason : "unspecified") + ")");
-}
-
-void Hardstuck::WriteFocusedSessionRecord(std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end)
+void Hardstuck::WriteFocusedSessionRecord(const std::string& focusLabel, std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end)
 {
 	if (!backend_)
 	{
@@ -639,6 +659,7 @@ void Hardstuck::WriteFocusedSessionRecord(std::chrono::system_clock::time_point 
 	}
 
 	const auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+	const std::string sessionType = SanitizeSessionType(focusLabel);
 	std::ostringstream oss;
 	oss << '{'
 		<< "\"timestamp\":" << JsonEscape(FormatTimestamp(start)) << ','
@@ -646,8 +667,9 @@ void Hardstuck::WriteFocusedSessionRecord(std::chrono::system_clock::time_point 
 		<< "\"mmr\":0," 
 		<< "\"gamesPlayedDiff\":0," 
 		<< "\"source\":\"manual_session\"," 
-		<< "\"sessionType\":\"focused_freeplay\"," 
+		<< "\"sessionType\":" << JsonEscape(sessionType) << ',' 
 		<< "\"userId\":" << JsonEscape(resolvedUserId_) << ','
+		<< "\"presetId\":" << JsonEscape(focusLabel.empty() ? std::string("focus") : focusLabel) << ','
 		<< "\"durationSeconds\":" << duration << ','
 		<< "\"teams\":[],"
 		<< "\"scoreboard\":[]"
@@ -656,18 +678,44 @@ void Hardstuck::WriteFocusedSessionRecord(std::chrono::system_clock::time_point 
 	backend_->DispatchPayloadAsync("/api/manual-session", oss.str());
 }
 
-void Hardstuck::StartFocusedFreeplayTimer()
+void Hardstuck::EnsureActiveFocus()
+{
+	if (settingsService_)
+	{
+		const auto focuses = settingsService_->GetFocusList();
+		if (!focuses.empty() && activeFocus_.empty())
+		{
+			activeFocus_ = focuses.front();
+		}
+	}
+
+	if (activeFocus_.empty())
+	{
+		activeFocus_ = "Training focus";
+	}
+}
+
+void Hardstuck::SetActiveFocus(const std::string& focus)
+{
+	activeFocus_ = focus;
+	if (activeFocus_.empty())
+	{
+		EnsureActiveFocus();
+	}
+}
+
+void Hardstuck::StartFocusTimer()
 {
 	if (focusedSessionActive_)
 	{
 		return;
 	}
+	EnsureActiveFocus();
 	focusedSessionActive_ = true;
 	focusedSessionStart_ = std::chrono::system_clock::now();
-	SetSessionLabel(SessionLabel::FocusedFreeplay, "focused_timer_start");
 }
 
-void Hardstuck::StopFocusedFreeplayTimer()
+void Hardstuck::StopFocusTimer()
 {
 	if (!focusedSessionActive_)
 	{
@@ -676,50 +724,19 @@ void Hardstuck::StopFocusedFreeplayTimer()
 	const auto end = std::chrono::system_clock::now();
 	const auto start = focusedSessionStart_;
 	focusedSessionActive_ = false;
-	WriteFocusedSessionRecord(start, end);
+	WriteFocusedSessionRecord(activeFocus_, start, end);
 }
 
-void Hardstuck::ToggleFocusedFreeplayTimer()
+void Hardstuck::ToggleFocusTimer()
 {
 	if (focusedSessionActive_)
 	{
-		StopFocusedFreeplayTimer();
+		StopFocusTimer();
 	}
 	else
 	{
-		StartFocusedFreeplayTimer();
+		StartFocusTimer();
 	}
-}
-
-void Hardstuck::RegisterSessionCommands()
-{
-	if (!cvarManager)
-	{
-		return;
-	}
-
-	auto registerSession = [this](const char* name, SessionLabel label, const char* description)
-	{
-		cvarManager->registerNotifier(
-			name,
-			[this, label, name](auto) { SetSessionLabel(label, name); },
-			description,
-			PERMISSION_ALL
-		);
-	};
-
-	registerSession("hs_session_focus_freeplay", SessionLabel::FocusedFreeplay, "Mark session as focused freeplay");
-	registerSession("hs_session_training_pack", SessionLabel::TrainingPack, "Mark session as training pack");
-	registerSession("hs_session_workshop", SessionLabel::Workshop, "Mark session as workshop");
-	registerSession("hs_session_casual", SessionLabel::Casual, "Mark session as casual");
-	registerSession("hs_session_ranked", SessionLabel::Ranked, "Mark session as ranked");
-
-	cvarManager->registerNotifier(
-		"hs_toggle_focus_session",
-		[this](auto) { ToggleFocusedFreeplayTimer(); },
-		"Start/stop focused freeplay manual session",
-		PERMISSION_ALL
-	);
 }
 
 void Hardstuck::RegisterUiCommands()

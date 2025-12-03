@@ -4,6 +4,7 @@
 #include <string>
 #include <functional>
 #include <chrono>
+#include <vector>
 
 #include "history/HistoryTypes.h"
 
@@ -24,6 +25,10 @@ void HsRenderOverlayUi(
     std::chrono::system_clock::time_point historyLastFetched,
     const std::string& activeSessionLabel,
     bool manualSessionActive,
+    const std::vector<std::string>& focuses,
+    const std::string& activeFocus,
+    std::function<void(const std::string&)> setActiveFocus,
+    std::function<void()> toggleFocusTimer,
     HsExecuteHistoryWindowFn executeHistoryWindowCommand,
     HsFetchHistoryFn fetchHistoryFn
 );

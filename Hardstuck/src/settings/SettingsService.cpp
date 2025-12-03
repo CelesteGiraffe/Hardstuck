@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <fstream>
+#include <vector>
 #include <system_error>
 #include <random>
 #include <sstream>
@@ -50,9 +52,7 @@ void SettingsService::RegisterCVars()
     cvarManager_->registerCvar(settings::kDataDirCvarName, defaultDir.string(), "Directory for Hardstuck local data");
     cvarManager_->registerCvar(settings::kStoreMaxBytesCvarName, std::to_string(maxStoreBytes_), "Max size per data file in bytes before rotation");
     cvarManager_->registerCvar(settings::kStoreMaxFilesCvarName, std::to_string(maxStoreFiles_), "Max number of rotated data files to keep");
-    cvarManager_->registerCvar(settings::kKeyFocusFreeplayCvarName, focusFreeplayKey_, "Keybind: mark focused freeplay session");
-    cvarManager_->registerCvar(settings::kKeyTrainingPackCvarName, trainingPackKey_, "Keybind: mark training pack session");
-    cvarManager_->registerCvar(settings::kKeyManualSessionCvarName, manualSessionKey_, "Keybind: toggle manual session tracking");
+    cvarManager_->registerCvar(settings::kFocusListCvarName, SerializeFocusList(focusList_), "List of focus labels separated by '|'");
     cvarManager_->registerCvar("hs_install_id", GenerateInstallId(), "Generated install identifier (do not edit)");
 
     cvarManager_->registerCvar(settings::kUiEnabledCvarName, "1", "Legacy UI toggle (window now follows togglemenu)");
@@ -76,9 +76,7 @@ void SettingsService::LoadPersistedSettings()
     std::string fileDataDir;
     std::string fileMaxBytes;
     std::string fileMaxFiles;
-    std::string fileKeyFocus;
-    std::string fileKeyTraining;
-    std::string fileKeyManual;
+    std::string fileFocusList;
     std::string fileInstallId;
 
     while (std::getline(input, line))
@@ -110,17 +108,9 @@ void SettingsService::LoadPersistedSettings()
         {
             fileMaxFiles = value;
         }
-        else if (key == "key_focus_freeplay")
+        else if (key == "focuses")
         {
-            fileKeyFocus = value;
-        }
-        else if (key == "key_training_pack")
-        {
-            fileKeyTraining = value;
-        }
-        else if (key == "key_manual_session")
-        {
-            fileKeyManual = value;
+            fileFocusList = value;
         }
         else if (key == "install_id")
         {
@@ -140,17 +130,9 @@ void SettingsService::LoadPersistedSettings()
     {
         try { SetMaxStoreFiles(std::stoi(fileMaxFiles)); } catch (...) {}
     }
-    if (!fileKeyFocus.empty())
+    if (!fileFocusList.empty())
     {
-        SetFocusFreeplayKey(fileKeyFocus);
-    }
-    if (!fileKeyTraining.empty())
-    {
-        SetTrainingPackKey(fileKeyTraining);
-    }
-    if (!fileKeyManual.empty())
-    {
-        SetManualSessionKey(fileKeyManual);
+        SetFocusList(DeserializeFocusList(fileFocusList));
     }
     if (!fileInstallId.empty())
     {
@@ -174,9 +156,7 @@ void SettingsService::SavePersistedSettings()
     output << "data_dir=" << GetDataDirectory().string() << "\n";
     output << "store_max_bytes=" << GetMaxStoreBytes() << "\n";
     output << "store_max_files=" << GetMaxStoreFiles() << "\n";
-    output << "key_focus_freeplay=" << GetFocusFreeplayKey() << "\n";
-    output << "key_training_pack=" << GetTrainingPackKey() << "\n";
-    output << "key_manual_session=" << GetManualSessionKey() << "\n";
+    output << "focuses=" << SerializeFocusList(GetFocusList()) << "\n";
     output << "install_id=" << GetInstallId() << "\n";
 }
 
@@ -353,67 +333,104 @@ void SettingsService::SetMaxStoreFiles(int files)
     }
 }
 
-std::string SettingsService::GetFocusFreeplayKey() const
+std::vector<std::string> SettingsService::NormalizeFocusList(const std::vector<std::string>& focuses)
+{
+    std::vector<std::string> normalized;
+    for (const auto& focus : focuses)
+    {
+        const std::string trimmed = Trimmed(focus);
+        if (trimmed.empty())
+        {
+            continue;
+        }
+        const bool exists = std::find_if(normalized.begin(), normalized.end(), [&](const std::string& existing) {
+            if (existing.size() != trimmed.size())
+            {
+                return false;
+            }
+            for (size_t i = 0; i < existing.size(); ++i)
+            {
+                if (std::tolower(static_cast<unsigned char>(existing[i])) != std::tolower(static_cast<unsigned char>(trimmed[i])))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }) != normalized.end();
+        if (!exists)
+        {
+            normalized.push_back(trimmed);
+        }
+    }
+    if (normalized.empty())
+    {
+        normalized.emplace_back("Training focus");
+    }
+    return normalized;
+}
+
+std::string SettingsService::SerializeFocusList(const std::vector<std::string>& focuses)
+{
+    std::ostringstream oss;
+    bool first = true;
+    for (const auto& focus : focuses)
+    {
+        if (!first)
+        {
+            oss << '|';
+        }
+        first = false;
+        oss << focus;
+    }
+    return oss.str();
+}
+
+std::vector<std::string> SettingsService::DeserializeFocusList(const std::string& serialized)
+{
+    std::vector<std::string> parsed;
+    std::stringstream ss(serialized);
+    std::string item;
+    while (std::getline(ss, item, '|'))
+    {
+        parsed.push_back(item);
+    }
+    return NormalizeFocusList(parsed);
+}
+
+std::vector<std::string> SettingsService::GetFocusList() const
 {
     if (!cvarManager_)
     {
-        return focusFreeplayKey_;
+        return focusList_;
     }
-    return ReadStringCvar(settings::kKeyFocusFreeplayCvarName, focusFreeplayKey_.c_str());
+
+    try
+    {
+        const std::string serialized = cvarManager_->getCvar(settings::kFocusListCvarName).getStringValue();
+        return DeserializeFocusList(serialized);
+    }
+    catch (...)
+    {
+        return focusList_;
+    }
 }
 
-void SettingsService::SetFocusFreeplayKey(const std::string& key)
+void SettingsService::SetFocusList(const std::vector<std::string>& focuses)
 {
-    focusFreeplayKey_ = key;
+    focusList_ = NormalizeFocusList(focuses);
     if (!cvarManager_)
     {
         return;
     }
 
-    try { cvarManager_->getCvar(settings::kKeyFocusFreeplayCvarName).setValue(key); }
-    catch (...) { DiagnosticLogger::Log("SettingsService::SetFocusFreeplayKey: failed to set hs_key_focus_freeplay"); }
-}
-
-std::string SettingsService::GetTrainingPackKey() const
-{
-    if (!cvarManager_)
+    try
     {
-        return trainingPackKey_;
+        cvarManager_->getCvar(settings::kFocusListCvarName).setValue(SerializeFocusList(focusList_));
     }
-    return ReadStringCvar(settings::kKeyTrainingPackCvarName, trainingPackKey_.c_str());
-}
-
-void SettingsService::SetTrainingPackKey(const std::string& key)
-{
-    trainingPackKey_ = key;
-    if (!cvarManager_)
+    catch (...)
     {
-        return;
+        DiagnosticLogger::Log("SettingsService::SetFocusList: failed to set hs_focus_list");
     }
-
-    try { cvarManager_->getCvar(settings::kKeyTrainingPackCvarName).setValue(key); }
-    catch (...) { DiagnosticLogger::Log("SettingsService::SetTrainingPackKey: failed to set hs_key_training_pack"); }
-}
-
-std::string SettingsService::GetManualSessionKey() const
-{
-    if (!cvarManager_)
-    {
-        return manualSessionKey_;
-    }
-    return ReadStringCvar(settings::kKeyManualSessionCvarName, manualSessionKey_.c_str());
-}
-
-void SettingsService::SetManualSessionKey(const std::string& key)
-{
-    manualSessionKey_ = key;
-    if (!cvarManager_)
-    {
-        return;
-    }
-
-    try { cvarManager_->getCvar(settings::kKeyManualSessionCvarName).setValue(key); }
-    catch (...) { DiagnosticLogger::Log("SettingsService::SetManualSessionKey: failed to set hs_key_manual_session"); }
 }
 
 int SettingsService::GetGamesPlayedIncrement() const

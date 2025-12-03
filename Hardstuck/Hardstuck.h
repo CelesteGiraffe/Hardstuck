@@ -99,17 +99,15 @@ private:
 	void RemovePendingMatchUpload(const std::shared_ptr<PendingMatchUpload>& pending);
 	int FetchLatestMmr(int playlistMmrId) const;
 	float GetPostMatchDelaySeconds() const;
-	void RegisterSessionCommands();
 	void RegisterUiCommands();
-	enum class SessionLabel { Unknown, FocusedFreeplay, TrainingPack, Workshop, Casual, Ranked };
-	SessionLabel ResolveSessionLabel(bool inFreeplay, int playlistMmrId) const;
-	std::string SessionLabelToString(SessionLabel label) const;
-	void SetSessionLabel(SessionLabel label, const char* reason);
-	void ToggleFocusedFreeplayTimer();
-	void StartFocusedFreeplayTimer();
-	void StopFocusedFreeplayTimer();
-	void WriteFocusedSessionRecord(std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end);
+	void StartFocusTimer();
+	void StopFocusTimer();
+	void ToggleFocusTimer();
+	void WriteFocusedSessionRecord(const std::string& focusLabel, std::chrono::system_clock::time_point start, std::chrono::system_clock::time_point end);
 	std::string CurrentSessionTypeString(bool inFreeplay, int playlistMmrId) const;
+	void EnsureActiveFocus();
+	void SetActiveFocus(const std::string& focus);
+	std::string SanitizeSessionType(const std::string& focus) const;
 
 	std::unique_ptr<class HsBackend> backend_;
 	bool showHistoryWindow_ = false;
@@ -117,8 +115,8 @@ private:
 	ImGuiContext* imguiContext_ = nullptr;
 	bool menuOpen_ = false;
 	std::unique_ptr<ISettingsService> settingsService_;
-	SessionLabel currentSessionLabel_{SessionLabel::Unknown};
 	bool focusedSessionActive_{false};
 	std::chrono::system_clock::time_point focusedSessionStart_{};
+	std::string activeFocus_;
 	std::string resolvedUserId_;
 };

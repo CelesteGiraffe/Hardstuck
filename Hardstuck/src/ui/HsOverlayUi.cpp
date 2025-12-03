@@ -104,6 +104,10 @@ void HsRenderOverlayUi(
     std::chrono::system_clock::time_point historyLastFetched,
     const std::string& activeSessionLabel,
     bool manualSessionActive,
+    const std::vector<std::string>& focuses,
+    const std::string& activeFocus,
+    std::function<void(const std::string&)> setActiveFocus,
+    std::function<void()> toggleFocusTimer,
     HsExecuteHistoryWindowFn executeHistoryWindowCommand,
     HsFetchHistoryFn fetchHistoryFn
 )
@@ -142,7 +146,7 @@ void HsRenderOverlayUi(
     ImGui::TextWrapped("Local capture + history viewer");
     ImGui::TextWrapped("Active session: %s%s",
         activeSessionLabel.empty() ? "unknown" : activeSessionLabel.c_str(),
-        manualSessionActive ? " (manual)" : "");
+        manualSessionActive ? " (timer active)" : "");
 
     if (!lastResponse.empty())
     {
@@ -177,6 +181,66 @@ void HsRenderOverlayUi(
     ImGui::Text("Training on that day: %.1f min", summary.latestTrainingMinutes);
     const float trainingTargetProgress = std::clamp(summary.latestTrainingMinutes / 60.0f, 0.0f, 1.0f);
     ImGui::ProgressBar(trainingTargetProgress, ImVec2(240.0f, 0.0f), "60m daily target");
+
+    ImGui::Separator();
+    ImGui::TextWrapped("Training focus");
+    if (!focuses.empty())
+    {
+        static int selectedFocus = 0;
+        if (!activeFocus.empty())
+        {
+            for (int i = 0; i < static_cast<int>(focuses.size()); ++i)
+            {
+                if (focuses[i] == activeFocus)
+                {
+                    selectedFocus = i;
+                    break;
+                }
+            }
+        }
+        if (selectedFocus >= static_cast<int>(focuses.size()))
+        {
+            selectedFocus = static_cast<int>(focuses.size()) - 1;
+        }
+        if (selectedFocus < 0)
+        {
+            selectedFocus = 0;
+        }
+        if (ImGui::BeginCombo("##focus_combo", activeFocus.empty() ? focuses[selectedFocus].c_str() : activeFocus.c_str()))
+        {
+            for (int i = 0; i < static_cast<int>(focuses.size()); ++i)
+            {
+                const bool isSelected = (i == selectedFocus);
+                if (ImGui::Selectable(focuses[i].c_str(), isSelected))
+                {
+                    selectedFocus = i;
+                    if (setActiveFocus)
+                    {
+                        setActiveFocus(focuses[i]);
+                    }
+                }
+                if (isSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    else
+    {
+        ImGui::TextWrapped("No focuses defined. Add one in settings.");
+    }
+
+    if (ImGui::Button(manualSessionActive ? "Stop timer" : "Start timer"))
+    {
+        if (toggleFocusTimer)
+        {
+            toggleFocusTimer();
+        }
+    }
+    ImGui::SameLine();
+    ImGui::TextWrapped("%s", activeFocus.empty() ? "No focus selected" : activeFocus.c_str());
 
     if (ImGui::Button("Refresh History"))
     {

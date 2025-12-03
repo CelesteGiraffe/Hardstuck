@@ -11,6 +11,7 @@
 #include <cstring>
 #include <filesystem>
 #include <chrono>
+#include <vector>
 
 namespace
 {
@@ -19,9 +20,9 @@ namespace
         char dataDirBuf[260] = {0};
         uint64_t maxBytes = 0;
         int maxFiles = 0;
-        char keyFocusBuf[64] = {0};
-        char keyTrainingBuf[64] = {0};
-        char keyManualBuf[64] = {0};
+        std::vector<std::string> focuses;
+        int selectedFocusIdx = 0;
+        char newFocusBuf[64] = {0};
         std::filesystem::path storePath;
         uint64_t storeSize = 0;
         std::string lastWrite;
@@ -50,9 +51,11 @@ namespace
         SafeStrCopy(uiState.dataDirBuf, dataDir.string(), sizeof(uiState.dataDirBuf));
         uiState.maxBytes = settingsService.GetMaxStoreBytes();
         uiState.maxFiles = settingsService.GetMaxStoreFiles();
-        SafeStrCopy(uiState.keyFocusBuf, settingsService.GetFocusFreeplayKey(), sizeof(uiState.keyFocusBuf));
-        SafeStrCopy(uiState.keyTrainingBuf, settingsService.GetTrainingPackKey(), sizeof(uiState.keyTrainingBuf));
-        SafeStrCopy(uiState.keyManualBuf, settingsService.GetManualSessionKey(), sizeof(uiState.keyManualBuf));
+        uiState.focuses = settingsService.GetFocusList();
+        if (uiState.selectedFocusIdx >= static_cast<int>(uiState.focuses.size()))
+        {
+            uiState.selectedFocusIdx = std::max(0, static_cast<int>(uiState.focuses.size()) - 1);
+        }
 
         uiState.storePath = currentStorePath.empty() ? dataDir / "local_history.jsonl" : currentStorePath;
         uiState.storeSize = 0;
@@ -94,19 +97,51 @@ namespace
         ImGui::TextWrapped("Last write: %s", uiState.lastWrite.empty() ? "n/a" : uiState.lastWrite.c_str());
     }
 
-    void RenderKeybindSection(SettingsUiState& uiState, ISettingsService& settingsService)
+    void RenderFocusSection(SettingsUiState& uiState, ISettingsService& settingsService, CVarManagerWrapper& cvarManager)
     {
-        ImGui::TextWrapped("Session labels (keybinds)");
-        ImGui::InputText("Mark focused freeplay", uiState.keyFocusBuf, sizeof(uiState.keyFocusBuf));
-        ImGui::InputText("Mark training pack", uiState.keyTrainingBuf, sizeof(uiState.keyTrainingBuf));
-        ImGui::InputText("Start/Stop manual session", uiState.keyManualBuf, sizeof(uiState.keyManualBuf));
-
-        if (ImGui::Button("Save keybinds"))
+        ImGui::TextWrapped("Training focuses");
+        ImGui::InputText("New focus", uiState.newFocusBuf, sizeof(uiState.newFocusBuf));
+        ImGui::SameLine();
+        if (ImGui::Button("Add Focus", hs::ui::PrimaryButtonSize()))
         {
-            settingsService.SetFocusFreeplayKey(uiState.keyFocusBuf);
-            settingsService.SetTrainingPackKey(uiState.keyTrainingBuf);
-            settingsService.SetManualSessionKey(uiState.keyManualBuf);
+            const std::string newFocus = uiState.newFocusBuf;
+            if (!newFocus.empty())
+            {
+                uiState.focuses.push_back(newFocus);
+                settingsService.SetFocusList(uiState.focuses);
+                uiState.focuses = settingsService.GetFocusList();
+                settingsService.SavePersistedSettings();
+                cvarManager.log("HS: added focus");
+                uiState.selectedFocusIdx = static_cast<int>(uiState.focuses.size()) - 1;
+            }
+            uiState.newFocusBuf[0] = '\0';
+        }
+
+        ImGui::Separator();
+        ImGui::TextWrapped("Available focuses");
+        ImGui::BeginChild("focus_list_child", ImVec2(0.0f, 160.0f), true);
+        for (size_t i = 0; i < uiState.focuses.size(); ++i)
+        {
+            const bool selected = static_cast<int>(i) == uiState.selectedFocusIdx;
+            if (ImGui::Selectable(uiState.focuses[i].c_str(), selected))
+            {
+                uiState.selectedFocusIdx = static_cast<int>(i);
+            }
+        }
+        ImGui::EndChild();
+
+        const bool hasFocus = !uiState.focuses.empty() && uiState.selectedFocusIdx >= 0 && uiState.selectedFocusIdx < static_cast<int>(uiState.focuses.size());
+        if (ImGui::Button("Remove Selected") && hasFocus)
+        {
+            uiState.focuses.erase(uiState.focuses.begin() + uiState.selectedFocusIdx);
+            settingsService.SetFocusList(uiState.focuses);
+            uiState.focuses = settingsService.GetFocusList();
             settingsService.SavePersistedSettings();
+            cvarManager.log("HS: removed focus");
+            if (uiState.selectedFocusIdx >= static_cast<int>(uiState.focuses.size()))
+            {
+                uiState.selectedFocusIdx = static_cast<int>(uiState.focuses.size()) - 1;
+            }
         }
     }
 
@@ -149,11 +184,11 @@ void HsRenderSettingsUi(
     auto& uiState = GetUiState();
     SyncBuffers(uiState, *settingsService, storePath);
 
-    ImGui::TextUnformatted("Local storage configuration and session labeling.");
+    ImGui::TextUnformatted("Local storage configuration and training focuses.");
 
     RenderStorageSection(uiState, *settingsService, *cvarManager);
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
-    RenderKeybindSection(uiState, *settingsService);
+    RenderFocusSection(uiState, *settingsService, *cvarManager);
 
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));
     RenderActions(std::move(toggleMenu), *cvarManager);
