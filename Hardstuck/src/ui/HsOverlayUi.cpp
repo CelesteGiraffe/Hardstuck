@@ -104,7 +104,6 @@ void HsRenderOverlayUi(
     std::chrono::system_clock::time_point historyLastFetched,
     const std::string& activeSessionLabel,
     bool manualSessionActive,
-    HsTriggerManualUploadFn triggerManualUpload,
     HsExecuteHistoryWindowFn executeHistoryWindowCommand,
     HsFetchHistoryFn fetchHistoryFn
 )
@@ -179,15 +178,6 @@ void HsRenderOverlayUi(
     const float trainingTargetProgress = std::clamp(summary.latestTrainingMinutes / 60.0f, 0.0f, 1.0f);
     ImGui::ProgressBar(trainingTargetProgress, ImVec2(240.0f, 0.0f), "60m daily target");
 
-    if (ImGui::Button("Gather && Upload Now"))
-    {
-        if (triggerManualUpload)
-        {
-            triggerManualUpload();
-        }
-    }
-
-    ImGui::SameLine();
     if (ImGui::Button("Refresh History"))
     {
         if (fetchHistoryFn)

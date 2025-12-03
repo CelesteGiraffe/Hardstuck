@@ -86,29 +86,10 @@ void HsBackend::DispatchPayloadAsync(const std::string& endpoint, const std::str
 
 bool HsBackend::UploadMmrSnapshot(const char* contextTag, const std::string& sessionType)
 {
-    const char* tag = contextTag ? contextTag : "unknown";
+	const char* tag = contextTag ? contextTag : "unknown";
 
-    if (!gameWrapper_)
-    {
-        DiagnosticLogger::Log(std::string("UploadMmrSnapshot: gameWrapper unavailable for context ") + tag);
-        return false;
-    }
-
-    auto payloads = HsBuildMmrSnapshotPayloads(gameWrapper_, settingsService_, sessionType, userId_);
-    if (payloads.empty())
-    {
-        DiagnosticLogger::Log(std::string("UploadMmrSnapshot: no snapshot payloads produced for context ") + tag);
-        return false;
-    }
-
-    for (const auto& p : payloads)
-    {
-        DispatchPayloadAsync("/api/mmr-log", p);
-    }
-
-    DiagnosticLogger::Log(std::string("UploadMmrSnapshot: dispatched ") +
-                          std::to_string(payloads.size()) + " snapshot payload(s) for context " + tag);
-    return true;
+	DiagnosticLogger::Log(std::string("UploadMmrSnapshot: snapshot uploads disabled (context ") + tag + ")");
+	return false;
 }
 
 void HsBackend::FetchHistory()

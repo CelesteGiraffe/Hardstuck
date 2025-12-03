@@ -154,7 +154,6 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse,
 		historyLastFetched,
 		sessionLabel,
 		manualActive,
-		[this]() { TriggerManualUpload(); },
 		[this]() { ExecuteHistoryWindowCommand(); },
 		[this]() { FetchHistory(); }
 	);
@@ -194,7 +193,6 @@ void Hardstuck::RenderSettings()
 	HsRenderSettingsUi(
 		settingsService_.get(),
 		cvarManager.get(),
-		[this]() { TriggerManualUpload(); },
 		[this]() { ToggleMenu(); },
 		backend_ ? backend_->GetStorePath() : std::filesystem::path()
 	);
