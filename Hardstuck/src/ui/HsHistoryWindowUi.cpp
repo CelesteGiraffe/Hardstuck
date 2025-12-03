@@ -278,30 +278,26 @@ namespace
 
     void RenderOverviewCards(const HistoryOverview& overview)
     {
-        const ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV;
-        if (ImGui::BeginTable("history_overview_cards", 3, flags))
-        {
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("MMR log");
-            ImGui::Text("Entries: %d / %d", overview.mmrEntries, overview.mmrLimit);
-            ImGui::Text("Last: %s", overview.lastMmrTimestamp.empty() ? "n/a" : overview.lastMmrTimestamp.c_str());
-            ImGui::Text("Latest rating: %d", overview.latestMmr);
+        ImGui::Columns(3, "overview_columns", false);
 
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted("Training log");
-            ImGui::Text("Sessions: %d / %d", overview.trainingEntries, overview.trainingLimit);
-            ImGui::Text("Last: %s", overview.lastTrainingTimestamp.empty() ? "n/a" : overview.lastTrainingTimestamp.c_str());
-            ImGui::Text("Latest day minutes: %.1f", overview.latestTrainingMinutes);
+        ImGui::TextUnformatted("MMR log");
+        ImGui::Text("Entries: %d / %d", overview.mmrEntries, overview.mmrLimit);
+        ImGui::Text("Last: %s", overview.lastMmrTimestamp.empty() ? "n/a" : overview.lastMmrTimestamp.c_str());
+        ImGui::Text("Latest rating: %d", overview.latestMmr);
+        ImGui::NextColumn();
 
-            ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted("Totals");
-            ImGui::Text("Recorded minutes: %.1f", overview.totalTrainingMinutes);
-            ImGui::Text("Timeline span: %s", overview.generatedAt.empty() ? "n/a" : overview.generatedAt.c_str());
-            ImGui::Text("Last ingest: %s", overview.receivedAt.empty() ? "n/a" : overview.receivedAt.c_str());
+        ImGui::TextUnformatted("Training log");
+        ImGui::Text("Sessions: %d / %d", overview.trainingEntries, overview.trainingLimit);
+        ImGui::Text("Last: %s", overview.lastTrainingTimestamp.empty() ? "n/a" : overview.lastTrainingTimestamp.c_str());
+        ImGui::Text("Latest day minutes: %.1f", overview.latestTrainingMinutes);
+        ImGui::NextColumn();
 
-            ImGui::EndTable();
-        }
+        ImGui::TextUnformatted("Totals");
+        ImGui::Text("Recorded minutes: %.1f", overview.totalTrainingMinutes);
+        ImGui::Text("Timeline span: %s", overview.generatedAt.empty() ? "n/a" : overview.generatedAt.c_str());
+        ImGui::Text("Last ingest: %s", overview.receivedAt.empty() ? "n/a" : overview.receivedAt.c_str());
+
+        ImGui::Columns(1);
     }
 
     void DrawTrainingBands(ImDrawList* drawList,
@@ -471,36 +467,35 @@ namespace
             return;
         }
 
-        const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY;
-        if (ImGui::BeginTable("history_daily_comparison", 4, flags, ImVec2(0.0f, 200.0f)))
+        ImGui::BeginChild("comparison_child", ImVec2(0.0f, 200.0f), true);
+        ImGui::Columns(4, "comparison_columns");
+        ImGui::TextUnformatted("Date");
+        ImGui::NextColumn();
+        ImGui::TextUnformatted("Training (min)");
+        ImGui::NextColumn();
+        ImGui::TextUnformatted("MMR delta");
+        ImGui::NextColumn();
+        ImGui::TextUnformatted("Closing MMR");
+        ImGui::NextColumn();
+        ImGui::Separator();
+
+        for (const auto& row : comparisons)
         {
-            ImGui::TableSetupScrollFreeze(0, 1);
-            ImGui::TableSetupColumn("Date");
-            ImGui::TableSetupColumn("Training (min)");
-            ImGui::TableSetupColumn("MMR delta");
-            ImGui::TableSetupColumn("Closing MMR");
-            ImGui::TableHeadersRow();
-
-            for (const auto& row : comparisons)
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(row.date.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%.1f", row.trainingMinutes);
-
-                ImGui::TableNextColumn();
-                const ImVec4 deltaColor = row.mmrDelta > 0
-                    ? ImVec4(0.50f, 0.86f, 0.63f, 1.0f)
-                    : (row.mmrDelta < 0 ? ImVec4(0.93f, 0.58f, 0.50f, 1.0f) : ImVec4(0.78f, 0.82f, 0.90f, 1.0f));
-                ImGui::TextColored(deltaColor, "%+d", row.mmrDelta);
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%d", row.closingMmr);
-            }
-            ImGui::EndTable();
+            ImGui::TextUnformatted(row.date.c_str());
+            ImGui::NextColumn();
+            ImGui::Text("%.1f", row.trainingMinutes);
+            ImGui::NextColumn();
+            const ImVec4 deltaColor = row.mmrDelta > 0
+                ? ImVec4(0.50f, 0.86f, 0.63f, 1.0f)
+                : (row.mmrDelta < 0 ? ImVec4(0.93f, 0.58f, 0.50f, 1.0f) : ImVec4(0.78f, 0.82f, 0.90f, 1.0f));
+            ImGui::TextColored(deltaColor, "%+d", row.mmrDelta);
+            ImGui::NextColumn();
+            ImGui::Text("%d", row.closingMmr);
+            ImGui::NextColumn();
         }
+
+        ImGui::Columns(1);
+        ImGui::EndChild();
     }
 
     void RenderMmrEntries(const std::vector<MmrHistoryEntry>& entries)
@@ -515,37 +510,31 @@ namespace
             return;
         }
 
-        const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY;
-        if (ImGui::BeginTable("history_mmr_entries", 5, flags, ImVec2(0.0f, 200.0f)))
+        ImGui::BeginChild("mmr_entries_child", ImVec2(0.0f, 200.0f), true);
+        ImGui::Columns(5, "mmr_columns");
+        ImGui::TextUnformatted("Time"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Playlist"); ImGui::NextColumn();
+        ImGui::TextUnformatted("MMR"); ImGui::NextColumn();
+        ImGui::TextUnformatted("GamesΔ"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Source"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::Separator();
+
+        for (const auto& entry : entries)
         {
-            ImGui::TableSetupScrollFreeze(0, 1);
-            ImGui::TableSetupColumn("Time");
-            ImGui::TableSetupColumn("Playlist");
-            ImGui::TableSetupColumn("MMR");
-            ImGui::TableSetupColumn("GamesΔ");
-            ImGui::TableSetupColumn("Source");
-            ImGui::TableHeadersRow();
-
-            for (const auto& entry : entries)
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.timestamp.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.playlist.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%d", entry.mmr);
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%+d", entry.gamesPlayedDiff);
-
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.source.c_str());
-            }
-            ImGui::EndTable();
+            ImGui::TextUnformatted(entry.timestamp.c_str());
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(entry.playlist.c_str());
+            ImGui::NextColumn();
+            ImGui::Text("%d", entry.mmr);
+            ImGui::NextColumn();
+            ImGui::Text("%+d", entry.gamesPlayedDiff);
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(entry.source.c_str());
+            ImGui::NextColumn();
         }
+        ImGui::Columns(1);
+        ImGui::EndChild();
     }
 
     void RenderTrainingEntries(const std::vector<TrainingHistoryEntry>& entries)
@@ -560,48 +549,41 @@ namespace
             return;
         }
 
-        const ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY;
-        if (ImGui::BeginTable("history_training_entries", 6, flags, ImVec2(0.0f, 220.0f)))
+        ImGui::BeginChild("training_entries_child", ImVec2(0.0f, 220.0f), true);
+        ImGui::Columns(6, "training_columns");
+        ImGui::TextUnformatted("Start"); ImGui::NextColumn();
+        ImGui::TextUnformatted("End"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Preset"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Duration (s)"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Blocks"); ImGui::NextColumn();
+        ImGui::TextUnformatted("Notes"); ImGui::NextColumn();
+        ImGui::NextColumn();
+        ImGui::Separator();
+
+        for (const auto& entry : entries)
         {
-            ImGui::TableSetupScrollFreeze(0, 1);
-            ImGui::TableSetupColumn("Start");
-            ImGui::TableSetupColumn("End");
-            ImGui::TableSetupColumn("Preset");
-            ImGui::TableSetupColumn("Duration (s)");
-            ImGui::TableSetupColumn("Blocks");
-            ImGui::TableSetupColumn("Notes");
-            ImGui::TableHeadersRow();
-
-            for (const auto& entry : entries)
+            ImGui::TextUnformatted(entry.startedTime.c_str());
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(entry.finishedTime.c_str());
+            ImGui::NextColumn();
+            ImGui::TextUnformatted(entry.presetId.c_str());
+            ImGui::NextColumn();
+            ImGui::Text("%d", entry.actualDuration);
+            ImGui::NextColumn();
+            ImGui::Text("%d", entry.blocks);
+            ImGui::NextColumn();
+            if (!entry.notes.empty())
             {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.startedTime.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.finishedTime.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(entry.presetId.c_str());
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%d", entry.actualDuration);
-
-                ImGui::TableNextColumn();
-                ImGui::Text("%d", entry.blocks);
-
-                ImGui::TableNextColumn();
-                if (!entry.notes.empty())
-                {
-                    ImGui::TextWrapped("%s", entry.notes.c_str());
-                }
-                else
-                {
-                    ImGui::TextDisabled("—");
-                }
+                ImGui::TextWrapped("%s", entry.notes.c_str());
             }
-            ImGui::EndTable();
+            else
+            {
+                ImGui::TextDisabled("—");
+            }
+            ImGui::NextColumn();
         }
+        ImGui::Columns(1);
+        ImGui::EndChild();
     }
 
     void RenderAggregates(const HistorySnapshot::Aggregates& aggregates)
@@ -613,21 +595,19 @@ namespace
 
         if (!aggregates.timeBySessionType.empty())
         {
-            if (ImGui::BeginTable("history_time_by_session", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
+            ImGui::Columns(2, "session_time_columns");
+            ImGui::TextUnformatted("Session type"); ImGui::NextColumn();
+            ImGui::TextUnformatted("Minutes"); ImGui::NextColumn();
+            ImGui::NextColumn();
+            ImGui::Separator();
+            for (const auto& kv : aggregates.timeBySessionType)
             {
-                ImGui::TableSetupColumn("Session type");
-                ImGui::TableSetupColumn("Minutes");
-                ImGui::TableHeadersRow();
-                for (const auto& kv : aggregates.timeBySessionType)
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(kv.first.c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%.1f", kv.second / 60.0);
-                }
-                ImGui::EndTable();
+                ImGui::TextUnformatted(kv.first.c_str());
+                ImGui::NextColumn();
+                ImGui::Text("%.1f", kv.second / 60.0);
+                ImGui::NextColumn();
             }
+            ImGui::Columns(1);
         }
         else
         {
@@ -638,39 +618,33 @@ namespace
         {
             ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
             ImGui::TextUnformatted("Recent MMR deltas");
-            if (ImGui::BeginTable("history_recent_deltas", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+            ImGui::Columns(5, "recent_deltas_columns");
+            ImGui::TextUnformatted("Time"); ImGui::NextColumn();
+            ImGui::TextUnformatted("Playlist"); ImGui::NextColumn();
+            ImGui::TextUnformatted("Session type"); ImGui::NextColumn();
+            ImGui::TextUnformatted("MMR"); ImGui::NextColumn();
+            ImGui::TextUnformatted("Delta"); ImGui::NextColumn();
+            ImGui::NextColumn();
+            ImGui::Separator();
+
+            int displayed = 0;
+            for (auto it = aggregates.mmrDeltas.rbegin(); it != aggregates.mmrDeltas.rend() && displayed < 12; ++it, ++displayed)
             {
-                ImGui::TableSetupColumn("Time");
-                ImGui::TableSetupColumn("Playlist");
-                ImGui::TableSetupColumn("Session type");
-                ImGui::TableSetupColumn("MMR");
-                ImGui::TableSetupColumn("Delta");
-                ImGui::TableHeadersRow();
-
-                int displayed = 0;
-                for (auto it = aggregates.mmrDeltas.rbegin(); it != aggregates.mmrDeltas.rend() && displayed < 12; ++it, ++displayed)
-                {
-                    const auto& delta = *it;
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(delta.timestamp.c_str());
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(delta.playlist.c_str());
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(delta.sessionType.c_str());
-
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%d", delta.mmr);
-
-                    ImGui::TableNextColumn();
-                    const ImVec4 deltaColor = delta.delta >= 0 ? ImVec4(0.50f, 0.86f, 0.63f, 1.0f)
-                                                               : ImVec4(0.93f, 0.58f, 0.50f, 1.0f);
-                    ImGui::TextColored(deltaColor, "%+d", delta.delta);
-                }
-                ImGui::EndTable();
+                const auto& delta = *it;
+                ImGui::TextUnformatted(delta.timestamp.c_str());
+                ImGui::NextColumn();
+                ImGui::TextUnformatted(delta.playlist.c_str());
+                ImGui::NextColumn();
+                ImGui::TextUnformatted(delta.sessionType.c_str());
+                ImGui::NextColumn();
+                ImGui::Text("%d", delta.mmr);
+                ImGui::NextColumn();
+                const ImVec4 deltaColor = delta.delta >= 0 ? ImVec4(0.50f, 0.86f, 0.63f, 1.0f)
+                                                           : ImVec4(0.93f, 0.58f, 0.50f, 1.0f);
+                ImGui::TextColored(deltaColor, "%+d", delta.delta);
+                ImGui::NextColumn();
             }
+            ImGui::Columns(1);
         }
     }
 }
