@@ -25,6 +25,8 @@ public:
     void SetMaxStoreFiles(int files) override;
     std::vector<std::string> GetFocusList() const override;
     void SetFocusList(const std::vector<std::string>& focuses) override;
+    int GetDailyGoalMinutes() const override;
+    void SetDailyGoalMinutes(int minutes) override;
     int GetGamesPlayedIncrement() const override;
     float GetPostMatchMmrDelaySeconds() const override;
 
@@ -42,5 +44,6 @@ private:
     uint64_t maxStoreBytes_ = 5 * 1024 * 1024; // 5MB default cap
     int maxStoreFiles_ = 4;
     std::vector<std::string> focusList_{"Freeplay focus", "Training pack focus"};
+    int dailyGoalMinutes_{60};
     mutable std::string installId_;
 };

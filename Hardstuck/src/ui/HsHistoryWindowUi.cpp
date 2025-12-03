@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <set>
 
 namespace
 {
@@ -57,6 +58,7 @@ namespace
         bool showTrainingOverlay{true};
         bool showDailyComparison{true};
         bool highlightMmrDelta{true};
+        std::string playlistFilter{"All Playlists"};
     };
 
     HistoryUiState& GetUiState()
@@ -91,6 +93,62 @@ namespace
             return lhs->timestamp < rhs->timestamp;
         });
         return sorted;
+    }
+
+    std::vector<std::string> BuildPlaylistOptions(const std::vector<MmrHistoryEntry>& mmrHistory)
+    {
+        std::set<std::string> unique;
+        for (const auto& entry : mmrHistory)
+        {
+            if (!entry.playlist.empty())
+            {
+                unique.insert(entry.playlist);
+            }
+        }
+
+        std::vector<std::string> options;
+        options.push_back("All Playlists");
+        for (const auto& playlist : unique)
+        {
+            options.push_back(playlist);
+        }
+        return options;
+    }
+
+    std::vector<MmrHistoryEntry> FilterMmrHistory(const std::vector<MmrHistoryEntry>& history, const std::string& filter)
+    {
+        if (filter.empty() || filter == "All Playlists")
+        {
+            return history;
+        }
+
+        std::vector<MmrHistoryEntry> filtered;
+        for (const auto& entry : history)
+        {
+            if (entry.playlist == filter)
+            {
+                filtered.push_back(entry);
+            }
+        }
+        return filtered;
+    }
+
+    HistorySnapshot::Aggregates FilterAggregates(const HistorySnapshot::Aggregates& aggregates, const std::string& filter)
+    {
+        if (filter.empty() || filter == "All Playlists")
+        {
+            return aggregates;
+        }
+
+        HistorySnapshot::Aggregates filtered = aggregates;
+        filtered.mmrDeltas.erase(
+            std::remove_if(filtered.mmrDeltas.begin(), filtered.mmrDeltas.end(),
+                [&filter](const HistorySnapshot::Aggregates::MmrDelta& delta)
+                {
+                    return delta.playlist != filter;
+                }),
+            filtered.mmrDeltas.end());
+        return filtered;
     }
 
     HistoryChartData BuildChartData(const std::vector<const MmrHistoryEntry*>& sortedMmr,
@@ -672,8 +730,34 @@ void HsRenderHistoryWindowUi(
     }
 
     HistoryUiState& uiState = GetUiState();
+    const std::vector<std::string> playlistOptions = BuildPlaylistOptions(snapshot.mmrHistory);
+    if (std::find(playlistOptions.begin(), playlistOptions.end(), uiState.playlistFilter) == playlistOptions.end())
+    {
+        uiState.playlistFilter = "All Playlists";
+    }
+
+    ImGui::TextUnformatted("Playlist filter");
+    if (ImGui::BeginCombo("##playlist_filter", uiState.playlistFilter.c_str()))
+    {
+        for (const auto& option : playlistOptions)
+        {
+            const bool selected = (option == uiState.playlistFilter);
+            if (ImGui::Selectable(option.c_str(), selected))
+            {
+                uiState.playlistFilter = option;
+            }
+            if (selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    const std::vector<MmrHistoryEntry> filteredMmr = FilterMmrHistory(snapshot.mmrHistory, uiState.playlistFilter);
+    const HistorySnapshot::Aggregates filteredAggregates = FilterAggregates(snapshot.aggregates, uiState.playlistFilter);
     const TrainingMinutesByDate trainingMinutes = BuildTrainingMinutes(snapshot.trainingHistory);
-    const std::vector<const MmrHistoryEntry*> sortedMmr = SortMmrHistory(snapshot.mmrHistory);
+    const std::vector<const MmrHistoryEntry*> sortedMmr = SortMmrHistory(filteredMmr);
     const HistoryChartData chartData = BuildChartData(sortedMmr, trainingMinutes, uiState.maxChartPoints);
     const HistoryOverview overview = BuildOverview(snapshot, sortedMmr, trainingMinutes);
     const std::vector<DailyComparisonRow> comparisons = BuildDailyComparison(sortedMmr, trainingMinutes);
@@ -692,11 +776,11 @@ void HsRenderHistoryWindowUi(
     RenderComparisonTable(comparisons, uiState.showDailyComparison);
 
     ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
-    RenderMmrEntries(snapshot.mmrHistory);
+    RenderMmrEntries(filteredMmr);
     ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
     RenderTrainingEntries(snapshot.trainingHistory);
     ImGui::Dummy(ImVec2(0.0f, hs::ui::SectionSpacing()));
-    RenderAggregates(snapshot.aggregates);
+    RenderAggregates(filteredAggregates);
 
     ImGui::End();
 }

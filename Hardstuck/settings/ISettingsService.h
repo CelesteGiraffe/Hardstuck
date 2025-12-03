@@ -14,6 +14,7 @@ namespace settings
     constexpr char kUiEnabledCvarName[] = "hs_ui_enabled";
     constexpr char kPostMatchDelayCvarName[] = "hs_post_match_mmr_delay";
     constexpr char kFocusListCvarName[] = "hs_focus_list";
+    constexpr char kDailyGoalMinutesCvarName[] = "hs_daily_goal_minutes";
 }
 
 class ISettingsService
@@ -34,6 +35,8 @@ public:
     virtual void SetMaxStoreFiles(int files) = 0;
     virtual std::vector<std::string> GetFocusList() const = 0;
     virtual void SetFocusList(const std::vector<std::string>& focuses) = 0;
+    virtual int GetDailyGoalMinutes() const = 0;
+    virtual void SetDailyGoalMinutes(int minutes) = 0;
     virtual int GetGamesPlayedIncrement() const = 0;
     virtual float GetPostMatchMmrDelaySeconds() const = 0;
 };

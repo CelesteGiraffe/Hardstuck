@@ -23,9 +23,11 @@ namespace
         std::vector<std::string> focuses;
         int selectedFocusIdx = 0;
         char newFocusBuf[64] = {0};
+        int dailyGoalMinutes = 60;
         std::filesystem::path storePath;
         uint64_t storeSize = 0;
         std::string lastWrite;
+        bool initialized = false;
     };
 
     SettingsUiState& GetUiState()
@@ -51,6 +53,7 @@ namespace
         SafeStrCopy(uiState.dataDirBuf, dataDir.string(), sizeof(uiState.dataDirBuf));
         uiState.maxBytes = settingsService.GetMaxStoreBytes();
         uiState.maxFiles = settingsService.GetMaxStoreFiles();
+        uiState.dailyGoalMinutes = settingsService.GetDailyGoalMinutes();
         uiState.focuses = settingsService.GetFocusList();
         if (uiState.selectedFocusIdx >= static_cast<int>(uiState.focuses.size()))
         {
@@ -76,33 +79,55 @@ namespace
 
     void RenderStorageSection(SettingsUiState& uiState, ISettingsService& settingsService, CVarManagerWrapper& cvarManager)
     {
-        ImGui::TextWrapped("Local storage location");
-        ImGui::InputText("Data directory", uiState.dataDirBuf, sizeof(uiState.dataDirBuf));
-        ImGui::InputScalar("Max file bytes", ImGuiDataType_U64, &uiState.maxBytes);
-        ImGui::InputInt("Max files to keep", &uiState.maxFiles);
+        ImGui::Columns(2, "storage_columns", false);
+        ImGui::TextUnformatted("Data directory");
+        ImGui::NextColumn();
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputText("##data_dir", uiState.dataDirBuf, sizeof(uiState.dataDirBuf));
+        ImGui::NextColumn();
 
-        if (ImGui::Button("Save storage settings"))
+        ImGui::TextUnformatted("Max file bytes");
+        ImGui::NextColumn();
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputScalar("##max_bytes", ImGuiDataType_U64, &uiState.maxBytes);
+        ImGui::NextColumn();
+
+        ImGui::TextUnformatted("Max files to keep");
+        ImGui::NextColumn();
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputInt("##max_files", &uiState.maxFiles);
+        ImGui::Columns(1);
+
+        ImGui::TextUnformatted("Daily goal (minutes)");
+        ImGui::SetNextItemWidth(160.0f);
+        ImGui::InputInt("##daily_goal", &uiState.dailyGoalMinutes);
+
+        if (ImGui::Button("Save storage"))
         {
             settingsService.SetDataDirectory(uiState.dataDirBuf);
             settingsService.SetMaxStoreBytes(uiState.maxBytes);
             settingsService.SetMaxStoreFiles(uiState.maxFiles);
+            settingsService.SetDailyGoalMinutes(uiState.dailyGoalMinutes);
             settingsService.SavePersistedSettings();
             cvarManager.log("HS: saved storage settings");
             SyncBuffers(uiState, settingsService, uiState.storePath);
         }
 
-        ImGui::Separator();
-        ImGui::TextWrapped("Current store: %s", uiState.storePath.string().c_str());
-        ImGui::Text("Size: %llu bytes", static_cast<unsigned long long>(uiState.storeSize));
-        ImGui::TextWrapped("Last write: %s", uiState.lastWrite.empty() ? "n/a" : uiState.lastWrite.c_str());
+        if (ImGui::CollapsingHeader("Store info", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::TextWrapped("Path: %s", uiState.storePath.string().c_str());
+            ImGui::Text("Size: %llu bytes", static_cast<unsigned long long>(uiState.storeSize));
+            ImGui::TextWrapped("Last write: %s", uiState.lastWrite.empty() ? "n/a" : uiState.lastWrite.c_str());
+        }
     }
 
     void RenderFocusSection(SettingsUiState& uiState, ISettingsService& settingsService, CVarManagerWrapper& cvarManager)
     {
         ImGui::TextWrapped("Training focuses");
-        ImGui::InputText("New focus", uiState.newFocusBuf, sizeof(uiState.newFocusBuf));
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.6f);
+        ImGui::InputText("##new_focus", uiState.newFocusBuf, sizeof(uiState.newFocusBuf));
         ImGui::SameLine();
-        if (ImGui::Button("Add Focus", hs::ui::PrimaryButtonSize()))
+        if (ImGui::Button("Add", ImVec2(80.0f, 0.0f)))
         {
             const std::string newFocus = uiState.newFocusBuf;
             if (!newFocus.empty())
@@ -118,37 +143,45 @@ namespace
         }
 
         ImGui::Separator();
-        ImGui::TextWrapped("Available focuses");
-        ImGui::BeginChild("focus_list_child", ImVec2(0.0f, 160.0f), true);
+        ImGui::Columns(2, "focus_columns", false);
+        ImGui::TextUnformatted("Focus");
+        ImGui::NextColumn();
+        ImGui::TextUnformatted("Actions");
+        ImGui::NextColumn();
+        ImGui::Separator();
+
         for (size_t i = 0; i < uiState.focuses.size(); ++i)
         {
             const bool selected = static_cast<int>(i) == uiState.selectedFocusIdx;
-            if (ImGui::Selectable(uiState.focuses[i].c_str(), selected))
+            if (ImGui::Selectable(uiState.focuses[i].c_str(), selected, ImGuiSelectableFlags_SpanAllColumns))
             {
                 uiState.selectedFocusIdx = static_cast<int>(i);
             }
-        }
-        ImGui::EndChild();
-
-        const bool hasFocus = !uiState.focuses.empty() && uiState.selectedFocusIdx >= 0 && uiState.selectedFocusIdx < static_cast<int>(uiState.focuses.size());
-        if (ImGui::Button("Remove Selected") && hasFocus)
-        {
-            uiState.focuses.erase(uiState.focuses.begin() + uiState.selectedFocusIdx);
-            settingsService.SetFocusList(uiState.focuses);
-            uiState.focuses = settingsService.GetFocusList();
-            settingsService.SavePersistedSettings();
-            cvarManager.log("HS: removed focus");
-            if (uiState.selectedFocusIdx >= static_cast<int>(uiState.focuses.size()))
+            ImGui::NextColumn();
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::SmallButton("Remove"))
             {
-                uiState.selectedFocusIdx = static_cast<int>(uiState.focuses.size()) - 1;
+                uiState.focuses.erase(uiState.focuses.begin() + static_cast<long long>(i));
+                settingsService.SetFocusList(uiState.focuses);
+                uiState.focuses = settingsService.GetFocusList();
+                settingsService.SavePersistedSettings();
+                cvarManager.log("HS: removed focus");
+                if (uiState.selectedFocusIdx >= static_cast<int>(uiState.focuses.size()))
+                {
+                    uiState.selectedFocusIdx = static_cast<int>(uiState.focuses.size()) - 1;
+                }
             }
+            ImGui::PopID();
+            ImGui::NextColumn();
         }
+        ImGui::Columns(1);
     }
 
     void RenderActions(HsToggleMenuFn toggleMenu, HsToggleOverlayFn toggleOverlay, CVarManagerWrapper& cvarManager)
     {
         ImGui::Spacing();
-        if (ImGui::Button("Open Hardstuck Menu", hs::ui::PrimaryButtonSize()))
+        const ImVec2 actionSize = ImVec2(hs::ui::PrimaryButtonSize().x, 0.0f);
+        if (ImGui::Button("Open Hardstuck Menu", actionSize))
         {
             if (toggleMenu)
             {
@@ -159,8 +192,7 @@ namespace
                 cvarManager.log("HS: menu toggle callback unavailable");
             }
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Open Overlay", hs::ui::PrimaryButtonSize()))
+        if (ImGui::Button("Open Overlay", actionSize))
         {
             if (toggleOverlay)
             {
@@ -195,7 +227,11 @@ void HsRenderSettingsUi(
 
     [[maybe_unused]] auto styleScope = hs::ui::ApplyStyle();
     auto& uiState = GetUiState();
-    SyncBuffers(uiState, *settingsService, storePath);
+    if (!uiState.initialized)
+    {
+        SyncBuffers(uiState, *settingsService, storePath);
+        uiState.initialized = true;
+    }
 
     RenderStorageSection(uiState, *settingsService, *cvarManager);
     ImGui::Dummy(ImVec2(0, hs::ui::SectionSpacing()));

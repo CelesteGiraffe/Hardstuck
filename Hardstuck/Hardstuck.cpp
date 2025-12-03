@@ -147,6 +147,7 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse,
 		? CurrentSessionTypeString(inFreeplay, 0)
 		: activeFocus_;
 	const bool manualActive = focusedSessionActive_;
+	const int dailyGoalMinutes = settingsService_ ? settingsService_->GetDailyGoalMinutes() : 60;
 	std::vector<std::string> focuses;
 	if (settingsService_)
 	{
@@ -167,6 +168,7 @@ void Hardstuck::RenderOverlay(const std::string& lastResponse,
 		historyLastFetched,
 		sessionLabel,
 		manualActive,
+		dailyGoalMinutes,
 		focuses,
 		activeFocus_,
 		[this](const std::string& focus) { SetActiveFocus(focus); },

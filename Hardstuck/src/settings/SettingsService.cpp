@@ -53,6 +53,7 @@ void SettingsService::RegisterCVars()
     cvarManager_->registerCvar(settings::kStoreMaxBytesCvarName, std::to_string(maxStoreBytes_), "Max size per data file in bytes before rotation");
     cvarManager_->registerCvar(settings::kStoreMaxFilesCvarName, std::to_string(maxStoreFiles_), "Max number of rotated data files to keep");
     cvarManager_->registerCvar(settings::kFocusListCvarName, SerializeFocusList(focusList_), "List of focus labels separated by '|'");
+    cvarManager_->registerCvar(settings::kDailyGoalMinutesCvarName, std::to_string(dailyGoalMinutes_), "Daily training goal in minutes");
     cvarManager_->registerCvar("hs_install_id", GenerateInstallId(), "Generated install identifier (do not edit)");
 
     cvarManager_->registerCvar(settings::kUiEnabledCvarName, "1", "Legacy UI toggle (window now follows togglemenu)");
@@ -77,6 +78,7 @@ void SettingsService::LoadPersistedSettings()
     std::string fileMaxBytes;
     std::string fileMaxFiles;
     std::string fileFocusList;
+    std::string fileDailyGoal;
     std::string fileInstallId;
 
     while (std::getline(input, line))
@@ -112,6 +114,10 @@ void SettingsService::LoadPersistedSettings()
         {
             fileFocusList = value;
         }
+        else if (key == "daily_goal_minutes")
+        {
+            fileDailyGoal = value;
+        }
         else if (key == "install_id")
         {
             fileInstallId = value;
@@ -133,6 +139,10 @@ void SettingsService::LoadPersistedSettings()
     if (!fileFocusList.empty())
     {
         SetFocusList(DeserializeFocusList(fileFocusList));
+    }
+    if (!fileDailyGoal.empty())
+    {
+        try { SetDailyGoalMinutes(std::stoi(fileDailyGoal)); } catch (...) {}
     }
     if (!fileInstallId.empty())
     {
@@ -157,6 +167,7 @@ void SettingsService::SavePersistedSettings()
     output << "store_max_bytes=" << GetMaxStoreBytes() << "\n";
     output << "store_max_files=" << GetMaxStoreFiles() << "\n";
     output << "focuses=" << SerializeFocusList(GetFocusList()) << "\n";
+    output << "daily_goal_minutes=" << GetDailyGoalMinutes() << "\n";
     output << "install_id=" << GetInstallId() << "\n";
 }
 
@@ -430,6 +441,41 @@ void SettingsService::SetFocusList(const std::vector<std::string>& focuses)
     catch (...)
     {
         DiagnosticLogger::Log("SettingsService::SetFocusList: failed to set hs_focus_list");
+    }
+}
+
+int SettingsService::GetDailyGoalMinutes() const
+{
+    if (!cvarManager_)
+    {
+        return dailyGoalMinutes_;
+    }
+
+    try
+    {
+        return cvarManager_->getCvar(settings::kDailyGoalMinutesCvarName).getIntValue();
+    }
+    catch (...)
+    {
+        return dailyGoalMinutes_;
+    }
+}
+
+void SettingsService::SetDailyGoalMinutes(int minutes)
+{
+    dailyGoalMinutes_ = std::max(10, minutes);
+    if (!cvarManager_)
+    {
+        return;
+    }
+
+    try
+    {
+        cvarManager_->getCvar(settings::kDailyGoalMinutesCvarName).setValue(dailyGoalMinutes_);
+    }
+    catch (...)
+    {
+        DiagnosticLogger::Log("SettingsService::SetDailyGoalMinutes: failed to set hs_daily_goal_minutes");
     }
 }
 

@@ -4,6 +4,7 @@
 #include "ui/ui_style.h"
 #include "utils/HsUtils.h" // FormatTimestamp, ExtractDatePortion
 #include <algorithm>
+#include <cstdio>
 
 #if __has_include("bakkesmod/wrappers/cvarmanagerwrapper.h")
 #include "bakkesmod/wrappers/cvarmanagerwrapper.h"
@@ -104,6 +105,7 @@ void HsRenderOverlayUi(
     std::chrono::system_clock::time_point historyLastFetched,
     const std::string& activeSessionLabel,
     bool manualSessionActive,
+    int dailyGoalMinutes,
     const std::vector<std::string>& focuses,
     const std::string& activeFocus,
     std::function<void(const std::string&)> setActiveFocus,
@@ -179,8 +181,11 @@ void HsRenderOverlayUi(
     }
     ImGui::Text("Latest MMR: %d (%+d)", summary.latestMmr, summary.latestMmrDelta);
     ImGui::Text("Training on that day: %.1f min", summary.latestTrainingMinutes);
-    const float trainingTargetProgress = std::clamp(summary.latestTrainingMinutes / 60.0f, 0.0f, 1.0f);
-    ImGui::ProgressBar(trainingTargetProgress, ImVec2(240.0f, 0.0f), "60m daily target");
+    const float goalMinutes = dailyGoalMinutes > 0 ? static_cast<float>(dailyGoalMinutes) : 60.0f;
+    const float trainingTargetProgress = std::clamp(summary.latestTrainingMinutes / goalMinutes, 0.0f, 1.0f);
+    char goalLabel[64];
+    std::snprintf(goalLabel, sizeof(goalLabel), "%dm daily target", static_cast<int>(goalMinutes));
+    ImGui::ProgressBar(trainingTargetProgress, ImVec2(240.0f, 0.0f), goalLabel);
 
     ImGui::Separator();
     ImGui::TextWrapped("Training focus");
